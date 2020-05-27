@@ -43,7 +43,7 @@
     <link href="http://yoursite.com/2017/05/26/fanbianiyi/"/>
     <id>http://yoursite.com/2017/05/26/fanbianiyi/</id>
     <published>2017-05-26T04:12:57.000Z</published>
-    <updated>2020-05-27T09:27:52.968Z</updated>
+    <updated>2020-05-27T09:28:56.857Z</updated>
     
     <content type="html"><![CDATA[<p><strong>使用Fernflower 批量反编译class</strong><br><strong>fernflower</strong>：是idea自带反编译工具，下载<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a></p><p><strong>批量反编译</strong></p><ul><li>首先把工程的所有class压缩成classes.zip</li><li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li></ul>]]></content>
     
