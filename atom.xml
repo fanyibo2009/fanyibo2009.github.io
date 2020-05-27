@@ -40,27 +40,27 @@
   
   <entry>
     <title>批量反编译class</title>
-    <link href="http://yoursite.com/2017/05/26/test/"/>
-    <id>http://yoursite.com/2017/05/26/test/</id>
+    <link href="http://yoursite.com/2017/05/26/fanbianiyi/"/>
+    <id>http://yoursite.com/2017/05/26/fanbianiyi/</id>
     <published>2017-05-26T04:12:57.000Z</published>
-    <updated>2020-05-06T14:29:37.181Z</updated>
+    <updated>2020-05-27T09:18:07.706Z</updated>
     
-    <content type="html"><![CDATA[<p><a href="https://www.cnblogs.com/whytohow/p/6130623.html" target="_blank" rel="noopener">https://www.cnblogs.com/whytohow/p/6130623.html</a></p><p>用Fernflower 反编译整个工程相当好用。<br>1.首先把工程的所有class 压缩成zip<br>2.java -jar fernflower.jar classes.zip zzCode/   使用此jar包加参数运行即可编译出相对很完美的java源码了</p><p>java -jar fernflower2015-1.jar thinkgem.zip thinkgem1/<br>需要新建 thinkgem1 存放java源码的文件夹</p>]]></content>
+    <content type="html"><![CDATA[<h1 id="批量反编译class"><a href="#批量反编译class" class="headerlink" title="批量反编译class"></a>批量反编译class</h1><h2 id="使用Fernflower-批量反编译class"><a href="#使用Fernflower-批量反编译class" class="headerlink" title="使用Fernflower 批量反编译class"></a>使用Fernflower 批量反编译class</h2><p><strong>fernflower</strong>：是idea自带反编译工具，下载<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a></p><blockquote><p>批量反编译</p></blockquote><ul><li>首先把工程的所有class压缩成classes.zip</li><li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li></ul>]]></content>
     
     <summary type="html">
     
       
       
-        &lt;p&gt;&lt;a href=&quot;https://www.cnblogs.com/whytohow/p/6130623.html&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;https://www.cnblogs.com/whytohow/p/6130623.html&lt;
+        &lt;h1 id=&quot;批量反编译class&quot;&gt;&lt;a href=&quot;#批量反编译class&quot; class=&quot;headerlink&quot; title=&quot;批量反编译class&quot;&gt;&lt;/a&gt;批量反编译class&lt;/h1&gt;&lt;h2 id=&quot;使用Fernflower-批量反编译class&quot;&gt;&lt;a href=
       
     
     </summary>
     
     
-      <category term="web前端" scheme="http://yoursite.com/categories/web%E5%89%8D%E7%AB%AF/"/>
+      <category term="反编译" scheme="http://yoursite.com/categories/%E5%8F%8D%E7%BC%96%E8%AF%91/"/>
     
     
-      <category term="反编译工具" scheme="http://yoursite.com/tags/%E5%8F%8D%E7%BC%96%E8%AF%91%E5%B7%A5%E5%85%B7/"/>
+      <category term="java反编译工具" scheme="http://yoursite.com/tags/java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%B7%A5%E5%85%B7/"/>
     
       <category term="fernflower.jar" scheme="http://yoursite.com/tags/fernflower-jar/"/>
     
