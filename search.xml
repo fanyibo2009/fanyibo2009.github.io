@@ -3,13 +3,8 @@
   <entry>
     <title>批量反编译class</title>
     <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<ul>
-<li><strong>使用Fernflower 批量反编译class</strong></li>
-<li><em>fernflower*</em>：是idea自带反编译工具，下载<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a></li>
-</ul>
-<blockquote>
-<p>批量反编译</p>
-</blockquote>
+    <content><![CDATA[<p><strong>使用Fernflower 批量反编译class</strong><br><strong>fernflower</strong>：是idea自带反编译工具，下载<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a></p>
+<p><strong>批量反编译</strong></p>
 <ul>
 <li>首先把工程的所有class压缩成classes.zip</li>
 <li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
