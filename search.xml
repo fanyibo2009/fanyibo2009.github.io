@@ -122,6 +122,24 @@ web.xml
       </tags>
   </entry>
   <entry>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
+]]></content>
+      <categories>
+        <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>MAT 查找 spring heapdump 中的密码明文</title>
     <url>/2020/08/25/SpringBootHeapdump/</url>
     <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
@@ -159,24 +177,6 @@ web.xml
 
 <p>More info: <a href="https://hexo.io/docs/one-command-deployment.html" target="_blank" rel="noopener">Deployment</a></p>
 ]]></content>
-  </entry>
-  <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
-]]></content>
-      <categories>
-        <category>反编译</category>
-      </categories>
-      <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
-      </tags>
   </entry>
   <entry>
     <title>fastjson黑盒测试与白盒审计</title>
