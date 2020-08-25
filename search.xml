@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>SpringBootHeapdump</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h1 id="MAT-查找-spring-heapdump-中的密码明文"><a href="#MAT-查找-spring-heapdump-中的密码明文" class="headerlink" title="MAT 查找 spring heapdump 中的密码明文"></a>MAT 查找 spring heapdump 中的密码明文</h1><h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip" target="_blank" rel="noopener"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz<br>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用<br>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html" target="_blank" rel="noopener">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw" target="_blank" rel="noopener">xray社区记一次信息泄漏到RCE</a></p>
+]]></content>
+  </entry>
+  <entry>
     <title>java代码审计思路</title>
     <url>/2020/08/24/CodeAudit/</url>
     <content><![CDATA[<p>常见的审计思路<br>1.查看目录结构，查看配置文件，判断框架信息<br>2.查看使用的类库包是否安全<br>3.filter、controller<br>4.数据查询<br>5.危险函数审计<br>6.查看xml配置的数据库信息和文件信息<br>7.黑盒测试对应白盒测试功能点</p>
