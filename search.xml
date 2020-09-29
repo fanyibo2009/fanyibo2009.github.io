@@ -70,24 +70,6 @@
       </tags>
   </entry>
   <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
-]]></content>
-      <categories>
-        <category>反编译</category>
-      </categories>
-      <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>java代码审计思路</title>
     <url>/2020/08/24/CodeAudit/</url>
     <content><![CDATA[<p>常见的审计思路<br>1.查看目录结构，查看配置文件，判断框架信息<br>2.查看使用的类库包是否安全<br>3.filter、controller<br>4.数据查询<br>5.危险函数审计<br>6.查看xml配置的数据库信息和文件信息<br>7.黑盒测试对应白盒测试功能点</p>
@@ -206,6 +188,24 @@ web.xml
       </categories>
       <tags>
         <tag>java代码审计</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
+]]></content>
+      <categories>
+        <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
       </tags>
   </entry>
   <entry>
