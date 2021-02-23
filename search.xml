@@ -339,4 +339,20 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
         <tag>fernflower.jar</tag>
       </tags>
   </entry>
+  <entry>
+    <title>search</title>
+    <url>/search/index.html</url>
+    <content><![CDATA[<h1 id="search"><a href="#search" class="headerlink" title="search"></a>search</h1>]]></content>
+  </entry>
+  <entry>
+    <title>about</title>
+    <url>/about/index.html</url>
+    <content><![CDATA[<p><strong>无尾熊</strong></p>
+<h6 id="一个普通的渣男"><a href="#一个普通的渣男" class="headerlink" title="一个普通的渣男"></a>一个普通的渣男</h6><h6 id="努力日站，世界和平"><a href="#努力日站，世界和平" class="headerlink" title="努力日站，世界和平"></a>努力日站，世界和平</h6>]]></content>
+  </entry>
+  <entry>
+    <title>tags</title>
+    <url>/tags/index.html</url>
+    <content><![CDATA[]]></content>
+  </entry>
 </search>
