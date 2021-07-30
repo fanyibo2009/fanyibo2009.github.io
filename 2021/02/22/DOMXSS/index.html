@@ -40,7 +40,7 @@
   
 
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="垃圾箱" type="application/atom+xml">
+<meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="垃圾箱" type="application/atom+xml">
 </head>
 
 <body>
@@ -83,20 +83,20 @@
 <blockquote>
 <p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
 </blockquote>
-<p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities" target="_blank" rel="noopener">关键函数列表</a></p>
+<p><a target="_blank" rel="noopener" href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">关键函数列表</a></p>
 <h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href&#x3D;&quot;?name&#x3D;1&quot; &#x2F;&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url &#x3D; location.search; &#x2F;&#x2F;获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest &#x3D; new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) !&#x3D; -1) &#123;</span><br><span class="line">            var str &#x3D; url.substr(1);</span><br><span class="line">            strs &#x3D; str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i &#x3D; 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;&#x3D;&quot;)[0]]&#x3D;decodeURI(strs[i].split(&quot;&#x3D;&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;调用</span><br><span class="line">    var Request &#x3D; new Object();</span><br><span class="line">    Request &#x3D; GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name &#x3D; Request[&#39;name&#39;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href=&quot;?name=1&quot; /&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url = location.search; //获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest = new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) != -1) &#123;</span><br><span class="line">            var str = url.substr(1);</span><br><span class="line">            strs = str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i = 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;=&quot;)[0]]=decodeURI(strs[i].split(&quot;=&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    //调用</span><br><span class="line">    var Request = new Object();</span><br><span class="line">    Request = GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name = Request[&#x27;name&#x27;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;/script&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
 
 <p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
 <p>我们对关键代码进行分析：</p>
 <pre><code>var url = location.search
 var name;
 name = Request[&apos;name&apos;];
-document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx" target="_blank" rel="noopener">表格下载</a></p>
+document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a target="_blank" rel="noopener" href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx">表格下载</a></p>
 <p>获取节点的主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
-<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219" target="_blank" rel="noopener">DOM-XSS漏洞挖掘</a>这部分</p>
+<p>关于漏洞修复可以看<a target="_blank" rel="noopener" href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a>这部分</p>
 <p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based" target="_blank" rel="noopener">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219" target="_blank" rel="noopener">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html" target="_blank" rel="noopener">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities" target="_blank" rel="noopener">DOM-xss列表</a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a target="_blank" rel="noopener" href="https://portswigger.net/web-security/cross-site-scripting/dom-based">DOM-based XSS</a><br><a target="_blank" rel="noopener" href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a><br><a target="_blank" rel="noopener" href="https://blog.th3wind.xyz/posts/1832779944.html">DOM XSS从javascript中输出数据到HTML页面</a><br><a target="_blank" rel="noopener" href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">DOM-xss列表</a></p>
 
   </div>
 
@@ -106,7 +106,7 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
 
   <div class="copyright" >
 
-    <a class="license-image" rel="license" href="http://creativecommons.org/licenses/by
+    <a class="license-image" rel="license noopener" target="_blank" href="http://creativecommons.org/licenses/by
 -nc
 -sa
 /4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" /></a>
@@ -115,7 +115,7 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
 
       <p>本作品采用
 
-      <a class="license-word-hyper" rel="license" href="http://creativecommons.org/licenses/by
+      <a class="license-word-hyper" rel="license noopener" target="_blank" href="http://creativecommons.org/licenses/by
 -nc
 -sa
 /4.0/">
@@ -152,7 +152,7 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
   <foot id="footer">
   <hr class="boldline"/>
   <p class="center font">
-    &copy - <a href="https://fanyibo2009.github.io" target="_blank" rel="noopener">无尾熊</a> -  2019 -  2021 - Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">hexo</a> 
+    &copy - <a target="_blank" rel="noopener" href="https://fanyibo2009.github.io">无尾熊</a> -  2019 -  2021 - Powered by <a target="_blank" rel="noopener" href="https://hexo.io/">hexo</a> 
   </p>
   <br/>
 </foot>
