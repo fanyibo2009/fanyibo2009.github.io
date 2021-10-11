@@ -69,10 +69,10 @@
   <br/><br/>
 
   <div id="post_content">
-    <table>
+    <h2 id="1-域常用操作命令"><a href="#1-域常用操作命令" class="headerlink" title="1.域常用操作命令"></a>1.域常用操作命令</h2><table>
 <thead>
 <tr>
-<th align="left"><strong>1.域常用操作命令</strong></th>
+<th align="left"><strong>域常用操作命令</strong></th>
 <th></th>
 </tr>
 </thead>
@@ -265,7 +265,7 @@
 <td>查看远程计算机进程列表</td>
 </tr>
 </tbody></table>
-<table>
+<h2 id="2-域常用操作命令"><a href="#2-域常用操作命令" class="headerlink" title="2.域常用操作命令"></a>2.域常用操作命令</h2><table>
 <thead>
 <tr>
 <th align="left"><strong>2.基本内网渗透命令：</strong></th>
@@ -449,7 +449,7 @@
 <td>获取保存到注册表中的密码</td>
 </tr>
 </tbody></table>
-<table>
+<h3 id="提权补丁"><a href="#提权补丁" class="headerlink" title="提权补丁"></a>提权补丁</h3><table>
 <thead>
 <tr>
 <th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i “%i”||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
@@ -457,10 +457,10 @@
 </tr>
 </thead>
 </table>
-<table>
+<h2 id="3-内网网络结常用命令"><a href="#3-内网网络结常用命令" class="headerlink" title="3.内网网络结常用命令"></a>3.内网网络结常用命令</h2><table>
 <thead>
 <tr>
-<th><strong>3.内网网络结常用命令：</strong></th>
+<th><strong>内网网络结常用命令：</strong></th>
 <th></th>
 </tr>
 </thead>
@@ -510,11 +510,11 @@
 </thead>
 <tbody><tr>
 <td>netsh interface ipv6 install</td>
-<td>//首先安装IPV6（xp、2003下IPV6必须安装，否则端口转发不可用！）</td>
+<td>首先安装IPV6（xp、2003下IPV6必须安装，否则端口转发不可用！）</td>
 </tr>
 <tr>
 <td>netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=22connectaddress=1.1.1.1 connectport=22</td>
-<td>//将本机22到1.1.1.1的22</td>
+<td>将本机22到1.1.1.1的22</td>
 </tr>
 <tr>
 <td>netsh interface portproxy add v4tov4 listenaddress=192.168.193.1listenport=22 connectaddress=8.8.8.8 connectport=22</td>
@@ -526,21 +526,21 @@
 </tr>
 <tr>
 <td>netsh interface portproxy show all</td>
-<td>// 查看转发配置</td>
+<td>查看转发配置</td>
 </tr>
 <tr>
 <td>netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0listenport=22</td>
-<td>//删除配置</td>
+<td>删除配置</td>
 </tr>
 <tr>
 <td>netsh firewall set portopening protocol=tcp port=22 name=Forwardmode=enable scope=all profile=all</td>
-<td>//添加防火墙规则，允许连接22：</td>
+<td>添加防火墙规则，允许连接22：</td>
 </tr>
 </tbody></table>
-<table>
+<h2 id="4-敏感数据和目录"><a href="#4-敏感数据和目录" class="headerlink" title="4.敏感数据和目录"></a>4.敏感数据和目录</h2><table>
 <thead>
 <tr>
-<th><strong>4.敏感数据和目录：</strong></th>
+<th><strong>敏感数据和目录：</strong></th>
 <th></th>
 </tr>
 </thead>
@@ -569,10 +569,10 @@
 <td>创建test.vbs脚本，输入脚本后，按ctr+z退出，并创建成功</td>
 </tr>
 </tbody></table>
-<table>
+<h2 id="5-dsquery的AD查询工具"><a href="#5-dsquery的AD查询工具" class="headerlink" title="5.dsquery的AD查询工具"></a>5.dsquery的AD查询工具</h2><table>
 <thead>
 <tr>
-<th><strong>5.dsquery的AD查询工具：</strong></th>
+<th><strong>dsquery的AD查询工具：</strong></th>
 <th></th>
 </tr>
 </thead>
