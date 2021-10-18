@@ -1,45 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>DOMXSS的一点研究</title>
-    <url>/2021/02/22/DOMXSS/</url>
-    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？--通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
-<h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。</p>
-<p>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
-<p>三个函数的作用域</p>
-<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139858968246.jpg" alt="-w773"></p>
-<p>2.编码：<br>js对文字进行编码涉及3个函数：escape,encodeURI,encodeURIComponent，相应3个解码函数：unescape,decodeURI,decodeURIComponent</p>
-<p>3.输出点(sinks)：<br>eval()、setTimeout()、setInterval()、Function()、innerHTML、document.write()<br>.innerHTML、.outerHTML<br>.append 等</p>
-<hr>
-<blockquote>
-<p>输入点：<br>document.location<br>document.URL<br>document.URLUnencoded<br>document.referrer<br>window.location（href hash）<br>所有的inputs<br>window.name<br>document.cookie<br>XMLhttpRequest<br>localstorage</p>
-</blockquote>
-<blockquote>
-<p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
-</blockquote>
-<p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">关键函数列表</a></p>
-<h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href=&quot;?name=1&quot; /&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url = location.search; //获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest = new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) != -1) &#123;</span><br><span class="line">            var str = url.substr(1);</span><br><span class="line">            strs = str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i = 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;=&quot;)[0]]=decodeURI(strs[i].split(&quot;=&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    //调用</span><br><span class="line">    var Request = new Object();</span><br><span class="line">    Request = GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name = Request[&#x27;name&#x27;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;/script&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
-
-<p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
-<p>我们对关键代码进行分析：</p>
-<pre><code>var url = location.search
-var name;
-name = Request[&apos;name&apos;];
-document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx">表格下载</a></p>
-<p>获取节点的主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
-<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a>这部分</p>
-<p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">DOM-xss列表</a></p>
-]]></content>
-      <categories>
-        <category>xss</category>
-      </categories>
-      <tags>
-        <tag>xss</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Cobalt Strike绕过流量审计</title>
     <url>/2020/09/23/CobaltStrike/</url>
     <content><![CDATA[<h1 id="Cobalt-Strike-绕过流量审计"><a href="#Cobalt-Strike-绕过流量审计" class="headerlink" title="Cobalt Strike 绕过流量审计"></a>Cobalt Strike 绕过流量审计</h1><h2 id="Cobalt-Strike简介"><a href="#Cobalt-Strike简介" class="headerlink" title="Cobalt Strike简介"></a>Cobalt Strike简介</h2><p>Cobalt Strike is software for Adversary Simulations and Red Team Operations.<br>Cobalt Strike 简称CS， <a href="https://blog.ateam.qianxin.com/CobaltStrike4.0%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C_%E4%B8%AD%E6%96%87%E7%BF%BB%E8%AF%91.pdf">A-team详细介绍使用网址</a>。CS是一款优秀的后渗透工具，可以在获取主机权限后进行长久权限维持，快速进行内网提权，凭据导出等。在后渗透中如果未修改特征，容易被流量审计设备监控，被蓝队溯源。<br><strong>多人运动来不来</strong>？<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/09/23/16007629731936.jpg" alt="-w936"></p>
@@ -100,21 +61,63 @@ cs生成Windows exe，运行成功上线.可以看到14.17.67.46 东莞IP上线�
       </tags>
   </entry>
   <entry>
-    <title>批量反编译class</title>
-    <url>/2017/05/26/fanbianiyi/</url>
-    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
-<p><strong>批量反编译</strong></p>
-<ul>
-<li>首先把工程的所有class压缩成classes.zip</li>
-<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
-</ul>
+    <title>DOMXSS的一点研究</title>
+    <url>/2021/02/22/DOMXSS/</url>
+    <content><![CDATA[<h2 id="起源"><a href="#起源" class="headerlink" title="起源"></a>起源</h2><p>近期一起与Camaro师傅做项目，发现他对domxss有很深入的研究（前端之父），顺便学习讨论了一下，写点博客记录一下心得。Dom可以简单理解为html的节点，当前端参数可控制、并且可影响节点时候，形成domxss。<br>通常来讲domxss是属于前端的漏洞，通过前端的javascript代码获取传入的变量，形成xss漏洞。特点：不会与后端服务器进行交互。DOM XSS有何不同？我们可以观察到：HTML页面是静态的，并且与其他类型的XSS攻击一样，页面源代码中没有嵌入任何恶意脚本。如果使用＃字符，脚本代码将永远不会到达服务器。它被视为一个片段，浏览器不会转发它。因此，服务器端攻击检测工具将无法检测到此攻击。这里抛出一个疑问：如果一段domxss的payload可以保存在前端，并且储存到数据库中。比如在留言的地方插入domxss-payload，那么当我们点击这个留言的时候触发domxss，我们是否可以称它为存储型domxss呢？是不是颠覆了大家对xss的分类和认知了？--通常domxss被称为“javascript中输出数据到HTML页面”，domxss的分类在我眼里一直是一个谜。</p>
+<h2 id="挖掘"><a href="#挖掘" class="headerlink" title="挖掘"></a>挖掘</h2><p>domxss漏洞审计三步骤：漏洞的挖掘方式一般是从输入源或者输出点进行审计。通常我们是打开控制台，在console中对可以的关键函数进行输出，查看参数值是否可被控制，打断点进行调试。</p>
+<p>分析domxss的三大步骤：<br>输入源-编码-输出点<br>1.输入源(sources)：<br>location.href<br>lcoation.hash<br>location.search</p>
+<p>三个函数的作用域</p>
+<p><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139858968246.jpg" alt="-w773"></p>
+<p>2.编码：<br>js对文字进行编码涉及3个函数：escape,encodeURI,encodeURIComponent，相应3个解码函数：unescape,decodeURI,decodeURIComponent</p>
+<p>3.输出点(sinks)：<br>eval()、setTimeout()、setInterval()、Function()、innerHTML、document.write()<br>.innerHTML、.outerHTML<br>.append 等</p>
+<hr>
+<blockquote>
+<p>输入点：<br>document.location<br>document.URL<br>document.URLUnencoded<br>document.referrer<br>window.location（href hash）<br>所有的inputs<br>window.name<br>document.cookie<br>XMLhttpRequest<br>localstorage</p>
+</blockquote>
+<blockquote>
+<p>输出点：<br>document.write()<br>document.writeln()<br>xxx.innerHTML=<br>xxx.outerHTML=<br>innerHTML.replace=<br>document.attachEvent()<br>window.attachEvent()<br>document.location.replace()<br>document.location.assign()<br>document.domain<br>someDOMElement.insertAdjacentHTML<br>someDOMElement.onevent</p>
+</blockquote>
+<p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">关键函数列表</a></p>
+<h2 id="栗子"><a href="#栗子" class="headerlink" title="栗子"></a>栗子</h2><p>将下述代码保存为domxss.html</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">    &lt;a href=&quot;?name=1&quot; /&gt;</span><br><span class="line">    name 的值   </span><br><span class="line">    &lt;script&gt;</span><br><span class="line"></span><br><span class="line">    function GetRequest() &#123;</span><br><span class="line">        var url = location.search; //获取url中&quot;?&quot;符后的字串</span><br><span class="line">        var theRequest = new Object();</span><br><span class="line">        if (url.indexOf(&quot;?&quot;) != -1) &#123;</span><br><span class="line">            var str = url.substr(1);</span><br><span class="line">            strs = str.split(&quot;&amp;&quot;);</span><br><span class="line">            for(var i = 0; i &lt; strs.length; i ++) &#123;</span><br><span class="line">                theRequest[strs[i].split(&quot;=&quot;)[0]]=decodeURI(strs[i].split(&quot;=&quot;)[1]);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return theRequest;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    //调用</span><br><span class="line">    var Request = new Object();</span><br><span class="line">    Request = GetRequest();</span><br><span class="line">    var name;</span><br><span class="line">    name = Request[&#x27;name&#x27;];</span><br><span class="line">    document.write(eval(name))  </span><br><span class="line">    &lt;/script&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>输入domxss.html?name=javascript:alert(1) 成功弹框<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139813417431.jpg" alt="-w902"></p>
+<p>我们对关键代码进行分析：</p>
+<pre><code>var url = location.search
+var name;
+name = Request[&apos;name&apos;];
+document.write(eval(name))  </code></pre><p>从浏览器获取name的值，然后重新赋值给新变量name，然后使用eval语句直接输出。eval函数可以直接执行javascript代码，所以我们输入name=javascript:alert(1)成功弹框。在上述代码中，输入源（sources）是location.search，输出点（sinks）是document.write。所以大家在做domxss漏洞挖掘的时候可以重点先关注“关键字”进行审计，如上述说的location.search等。<br>重点关键字表格如下：<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139826344907.jpg" alt="-w1368"><br><a href="https://github.com/fanyibo2009/work/blob/master/dom-xss%E5%AE%A1%E8%AE%A1%E5%87%BD%E6%95%B0.xlsx">表格下载</a></p>
+<p>获取节点的主要方法<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/02/22/16139847616990.jpg" alt="-w631"></p>
+<p>关于漏洞修复可以看<a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a>这部分</p>
+<p>最后大家可以关注一些浏览器特性，还有就是“通过web唤起APP的操作也是越来越多，跳转的协议也是多种多样，例如 webview:// , myappbridge:// 等等。 仅仅使用 http 和 https 来判断URL是否合法已经不适用了，于是由跳转所产生的DOM-XSS漏洞也逐渐增多”</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based">DOM-based XSS</a><br><a href="https://security.jd.com/#/safetyResearch/219">DOM-XSS漏洞挖掘</a><br><a href="https://blog.th3wind.xyz/posts/1832779944.html">DOM XSS从javascript中输出数据到HTML页面</a><br><a href="https://portswigger.net/web-security/cross-site-scripting/dom-based#which-sinks-can-lead-to-dom-xss-vulnerabilities">DOM-xss列表</a></p>
 ]]></content>
       <categories>
-        <category>反编译</category>
+        <category>xss</category>
       </categories>
       <tags>
-        <tag>java反编译工具</tag>
-        <tag>fernflower.jar</tag>
+        <tag>xss</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MAT 查找 spring heapdump 中的密码明文</title>
+    <url>/2020/08/25/SpringBootHeapdump/</url>
+    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
+<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
+<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
+<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
+<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
+<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
+<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
+]]></content>
+      <categories>
+        <category>代码</category>
+      </categories>
+      <tags>
+        <tag>黑盒测试</tag>
       </tags>
   </entry>
   <entry>
@@ -146,24 +149,21 @@ cs生成Windows exe，运行成功上线.可以看到14.17.67.46 东莞IP上线�
       </tags>
   </entry>
   <entry>
-    <title>MAT 查找 spring heapdump 中的密码明文</title>
-    <url>/2020/08/25/SpringBootHeapdump/</url>
-    <content><![CDATA[<h2 id="前景"><a href="#前景" class="headerlink" title="前景"></a>前景</h2><p>访问 /env 接口时，spring actuator 会将一些带有敏感关键词 (如 password、secret) 的属性名对应的属性值用 <strong>**</strong> 号替换，以达到脱敏的效果。<br>在目标既不出网，/jolokia 接口又没有合适的 MBean 或者不支持 POST 请求的情况下，很多获取被星号脱敏的密码的明文的方法就失效了。<br>这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文。</p>
-<h2 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h2><p>1 直接下载<strong><a href="http://xx.xx.xx.xx/heapdump">http://xx.xx.xx.xx/heapdump</a></strong> 或者<strong><a href="http://xx.xx.xx.xx/actuator/heapdump">http://xx.xx.xx.xx/actuator/heapdump</a></strong> (spring2.x 修改了路径)</p>
-<p>2 这时候就可以利用 Eclipse Memory Analyzer 工具来分析 /heapdump 或 /actuator/heapdump 接口下载的 jvm heap 信息，查找密码明文</p>
-<p>3 使用<a href="https://www.o2oxy.cn/wp-content/uploads/2020/05/MemoryAnalyzer.zip"> Eclipse Memory Analyzer</a> 直接打开下载的 heapdump 文件，点击 OQL 标签，在查询框中输入,再点击感叹号运行下列语句。前者Spring1.x 后者Spring2.x</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">select * from org.springframework.web.context.support.StandardServletEnvironment</span><br><span class="line">或者</span><br><span class="line">select * from java.util.Hashtable$Entry x WHERE (toString(x.key).contains(&quot;password&quot;))</span><br></pre></td></tr></table></figure>
-<p>4 成功查询到密码，结合/env页面泄漏的信息可以知道是jdbc还是邮箱的密码等<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2020/08/25/15983217624960.jpg" alt="-w1187"></p>
-<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>1 select语句中的关键字password替换为其他mail关键字进行fuzz</p>
-<p>2 heapdump 泄漏的反序列化点是否可以被我们黑盒利用</p>
-<p>3 可以结合/env页面泄漏的信息猜测其他敏感内容rce，比如sso的ak和sk等</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://fanyibo2009.github.io/">欢迎查看无尾熊blog</a><br><a href="http://vulsee.com/archives/vulsee_2020/0807_11841.html">spring boot 获取被星号脱敏的密码的明文</a><br><a href="https://mp.weixin.qq.com/s/YirHAXg3VZXA3Znj4L6xSw">xray社区记一次信息泄漏到RCE</a></p>
+    <title>批量反编译class</title>
+    <url>/2017/05/26/fanbianiyi/</url>
+    <content><![CDATA[<p><strong>使用<a href="http://the.bytecode.club/fernflower.jar">fernflower.jar</a> 批量反编译class</strong></p>
+<p><strong>批量反编译</strong></p>
+<ul>
+<li>首先把工程的所有class压缩成classes.zip</li>
+<li>java -jar fernflower.jar classes.zip zzCode/  （新建zzCode文件夹） </li>
+</ul>
 ]]></content>
       <categories>
-        <category>代码</category>
+        <category>反编译</category>
       </categories>
       <tags>
-        <tag>黑盒测试</tag>
+        <tag>java反编译工具</tag>
+        <tag>fernflower.jar</tag>
       </tags>
   </entry>
   <entry>
@@ -253,6 +253,49 @@ Fastjson可以将java的对象转换成json的形式，也可以用来将json转
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">https://github.com/c0ny1/FastjsonExploit</span><br><span class="line">https://github.com/shengqi158/fastjson-remote-code-execute-poc</span><br><span class="line">https://www.cnblogs.com/hac425/p/9800288.html</span><br><span class="line">https://blog.csdn.net/yaofeino1/article/details/76377080</span><br><span class="line">https://blog.riskivy.com/无损检测fastjson-dos漏洞以及盲区分fastjson与jackson组件/</span><br><span class="line">https://kingx.me/Restrictions-and-Bypass-of-JNDI-Manipulations-RCE.html</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>反编译</category>
+      </categories>
+      <tags>
+        <tag>代码审计</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>shiro系列漏洞探索</title>
+    <url>/2021/10/18/shiro%E7%B3%BB%E5%88%97%E6%BC%8F%E6%B4%9E%E6%8E%A2%E7%B4%A2/</url>
+    <content><![CDATA[<h1 id="shiro系列漏洞探索"><a href="#shiro系列漏洞探索" class="headerlink" title="shiro系列漏洞探索"></a>shiro系列漏洞探索</h1><h2 id="分类"><a href="#分类" class="headerlink" title="分类"></a>分类</h2><p>按照利用难度和危害我们依次分为<br>shiro550 &gt; shiro721 &gt; shiro权限绕过</p>
+<p>为什么叫SHIRO-550 呢？<br><a href="https://issues.apache.org/jira/browse/SHIRO-550">https://issues.apache.org/jira/browse/SHIRO-550</a></p>
+<h3 id="shiro550漏洞分析"><a href="#shiro550漏洞分析" class="headerlink" title="shiro550漏洞分析"></a>shiro550漏洞分析</h3><p>shiro-core-1.2.4.jar!/org.apache.shiro.mgt.AbstractRememberMeManager.class#RememberMeManager</p>
+<p>AbstractRememberMeManager 继承了RememberMeManager，看到了硬编码的key<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16260947442257.jpg" alt="-w970"></p>
+<p>第一个断点打在<br>org.apache.shiro.mgt.AbstractRememberMeManager.class#getRememberedPrincipals<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262309494314.jpg" alt=""></p>
+<p>然后点击<code>step over</code>进行跟踪<br>当cookie的base64解密后不等于<code>deleteMe</code>的进入循环，把base64.decode后的值赋值给<a href="byte[]">数组类型</a>的decoded<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262311798658.jpg" alt=""></p>
+<p>这边的decode是shiro自定义函数<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16261017094855.jpg" alt="-w561"></p>
+<p>接着往下走， principals = this.convertBytesToPrincipals(bytes, subjectContext);<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262319120721.jpg" alt=""></p>
+<p>点击step into跟进convertBytesToPrincipals, 最后会执行deserialize反序列化输入的字节<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262322056792.jpg" alt=""></p>
+<p>这边进this.decrypt函数，getDecryptionCipherKey的值是默认的<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262443248583.jpg" alt="-w940"></p>
+<p>就是private byte[] decryptionCipherKey;<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262443988976.jpg" alt="-w1026"></p>
+<p>继续进行跟进 cipherService.decrypt<br>org.apache.shiro.crypto.JcaCipherService.class#ByteSource decrypt<br>iv 不为空，cbc解密，这样就比较奇怪了，我们生成cookie的时候并没有输入iv偏移量，继续跟踪<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262452194943.jpg" alt="-w1009"></p>
+<p>发现cbc解密的时候iv 为空<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262464230483.jpg" alt=""></p>
+<p>函数System.arraycopy(ciphertext, ivByteSize, encrypted, 0, encryptedSize)中iv是<br>[-5, -30, 5, 65, -34, 25, 34, -11, -102, -125, 98, -56, 73, 25, -120, 114]，经过多次测试发现是一个变化的值，那cookie是怎么解密的呢？<br>在183行System.arraycopy以前，这时候的iv值还是空值<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345281308441.jpg" alt="-w1402"></p>
+<p>第183行中System.arraycopy(ciphertext, 0, iv, 0, ivByteSize);函数进行了iv的赋值。这个iv也就是cookie中的iv变量的值<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345252459315.jpg" alt="-w1419"></p>
+<p>我们对现在ciphertext函数中的iv值<br>{75, -17, -35, 46, -2, 49, 73, -35, -97, 115, -13, 61, 80, -54, 47, 111 }进行解密得到<strong>K��.�1I��s�=P�/o</strong><br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345278922818.jpg" alt=""></p>
+<p>对生成利用脚本中生成的cookie值<strong>K��.�1I��s�=P�/o</strong> iv 做比较，发现一致，证明这个iv就是我们攻击payload中cookie的iv值，也就是说这个iv是我们前段可以控制的。<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345279390530.jpg" alt="-w904"></p>
+<p>最后调用<br>org.apache.shiro.mgt.AbstractRememberMeManager.class#PrincipalCollection deserialize(byte[] serializedIdentity)<br>触发反序列化（也就是说shiro重写了readObject）<br>org.apache.shiro.crypto.JcaCipherService.class#DefaultSerializer.class<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16262449414986.jpg" alt="-w927"></p>
+<h3 id="其他代码问题"><a href="#其他代码问题" class="headerlink" title="其他代码问题"></a>其他代码问题</h3><h4 id="1-shiro是从哪里获取传入的cookie值"><a href="#1-shiro是从哪里获取传入的cookie值" class="headerlink" title="1 shiro是从哪里获取传入的cookie值"></a>1 shiro是从哪里获取传入的cookie值</h4><p>1.2.4/shiro-web-1.2.4.jar!/org/apache/shiro/web/mgt/CookieRememberMeManager.class</p>
+<p>byte[] decoded = Base64.decode(base64)<br>cookie 的所有值<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345269998180.jpg" alt="-w1282"></p>
+<h4 id="2-rememberMe中的cookie加密的AES是哪种模式？"><a href="#2-rememberMe中的cookie加密的AES是哪种模式？" class="headerlink" title="2 rememberMe中的cookie加密的AES是哪种模式？"></a>2 rememberMe中的cookie加密的AES是哪种模式？</h4><p>org.apache.shiro.web.mgt.CookieRememberMeManager.class#getRememberedSerializedIdentity函数中<br>String base64 = this.getCookie().readValue(request, response)<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16260963361534.jpg" alt="-w635"></p>
+<h4 id="3-断点应该怎么打？直接在触发点T-deserialized-ois-readObject-处打，就可以看到所有的利用链了，这也是反序列化漏洞审计的一个通用方法，因为触发点都在readObject-函数"><a href="#3-断点应该怎么打？直接在触发点T-deserialized-ois-readObject-处打，就可以看到所有的利用链了，这也是反序列化漏洞审计的一个通用方法，因为触发点都在readObject-函数" class="headerlink" title="3 断点应该怎么打？直接在触发点T deserialized = ois.readObject()处打，就可以看到所有的利用链了，这也是反序列化漏洞审计的一个通用方法，因为触发点都在readObject()函数"></a>3 断点应该怎么打？直接在触发点T deserialized = ois.readObject()处打，就可以看到所有的利用链了，这也是反序列化漏洞审计的一个通用方法，因为触发点都在readObject()函数</h4><p>/org/apache/shiro/shiro-core/1.2.4/shiro-core-1.2.4.jar!/org.apache.shiro.io.DefaultSerializer.class#deserialize<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345309649510.jpg" alt="-w1350"><br>点击Copy Stack 复制调用链<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345312510523.jpg" alt=""></p>
+<h4 id="4-shiro的本身的路有是如何进行的"><a href="#4-shiro的本身的路有是如何进行的" class="headerlink" title="4 shiro的本身的路有是如何进行的"></a>4 shiro的本身的路有是如何进行的</h4><p>/org/apache/shiro/shiro-web/1.2.4/shiro-web-1.2.4.jar!/org/apache/shiro/web/servlet/OncePerRequestFilter.class<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345340355640.jpg" alt=""><br>相关请求<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345339418313.jpg" alt=""></p>
+<h3 id="函数调用链"><a href="#函数调用链" class="headerlink" title="函数调用链"></a>函数调用链</h3><p>deserialize:77, DefaultSerializer (org.apache.shiro.io)<br>deserialize:514, AbstractRememberMeManager (org.apache.shiro.mgt)<br>convertBytesToPrincipals:431, AbstractRememberMeManager (org.apache.shiro.mgt)<br>getRememberedPrincipals:396, AbstractRememberMeManager (org.apache.shiro.mgt)<br>getRememberedIdentity:604, DefaultSecurityManager (org.apache.shiro.mgt)<br>resolvePrincipals:492, DefaultSecurityManager (org.apache.shiro.mgt)</p>
+<h3 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h3><h4 id="orange-说使用cc3链利用不成功？"><a href="#orange-说使用cc3链利用不成功？" class="headerlink" title="orange 说使用cc3链利用不成功？"></a>orange 说使用cc3链利用不成功？</h4><p><a href="http://blog.orange.tw/2018/03/pwn-ctf-platform-with-java-jrmp-gadget.html">Pwn a CTF Platform with Java JRMP Gadget</a>中评论说到<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16345345741137.jpg" alt="-w886"></p>
+<p>发现原本的 ObjectInputStream.resolveClass() 是调用的 Class.forName() 来加载类。shiro这边的ObjectInputStream.resolveClass()是调用的loadClass<br>org.apache.shiro.util.ClassUtils.class#loadClass<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16261006548920.jpg" alt="-w1005"></p>
+<p>这边参考voidfoo子航师傅文章了解到：<br><em>所以这里就涉及到一个问题，ClassLoader.loadClass() 和 Class.forName() 在加载类时有什么区别？<br>    Class.forName(&quot;SomeClass&quot;) 会进行类初始化（执行 static 代码块），ClassLoader.loadClass(&quot;SomeClass&quot;) 则不会<br>    但这个区别不是这里 commons-collections gadget 在 shiro 反序列化漏洞中无法直接利用的原因，这里直接利用会失败的真正原因是 ClassLoader.loadClass() 不支持加载数组类型的类，Class.forName() 才支持</em>。</p>
+<h4 id="如果目标机器不出网怎么检测key"><a href="#如果目标机器不出网怎么检测key" class="headerlink" title="如果目标机器不出网怎么检测key"></a>如果目标机器不出网怎么检测key</h4><p>这边主要是参考了<a href="https://mp.weixin.qq.com/s/do88_4Td1CSeKLmFqhGCuQ">一种另类的 shiro 检测方式</a>文章</p>
+<h4 id="不出网利用"><a href="#不出网利用" class="headerlink" title="不出网利用"></a>不出网利用</h4><p>1.jrmp延时<br>2.获取前台js文件在相同下路径写shell<br>3.内存shell</p>
+<h4 id="实战中的一点思考"><a href="#实战中的一点思考" class="headerlink" title="实战中的一点思考"></a>实战中的一点思考</h4><p>shiro和fastjson负载问题<br>因为有些负载主机的shiro.jar 包没有升级，导致可以继续被利用，这种情况下可以多尝试几遍攻击，来尝试流量经过未被加固过的主机<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16344782402008.jpg" alt="-w747"></p>
+<p>路径回现<br><img src="https://mwebkeyi.oss-cn-beijing.aliyuncs.com/2021/10/18/16344780508214.jpg" alt=""></p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p>voidfoo大佬wiki文章<br><a href="https://mp.weixin.qq.com/s/do88_4Td1CSeKLmFqhGCuQ">一种另类的 shiro 检测方式</a><br><a href="https://github.com/apache/shiro/commit/4d5bb000a7f3c02d8960b32e694a565c95976848">漏洞修复</a><br><a href="http://blog.knownsec.com/2016/08/apache-shiro-java/">Apache Shiro Java 反序列化漏洞分析</a></p>
+]]></content>
+      <categories>
+        <category>java代码审计</category>
       </categories>
       <tags>
         <tag>代码审计</tag>
